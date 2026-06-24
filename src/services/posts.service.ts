@@ -1,21 +1,27 @@
-import api from '@/lib/axios';
+import axios from 'axios';
+
+const API_BASE_URL = 'https://collegenz-api.onrender.com/api/v1';
 
 export const postsService = {
-  // Fetches aggregated posts (Supports filtering by type: 'recent', 'event', 'hiring')
-  getFeed: async (type = 'recent', page = 1) => {
-    const res = await api.get(`/posts/feed?type=${type}&page=${page}`);
-    return res.data;
-  },
+  getFeed: async (filter: string, page: number = 1) => {
+    try {
+      // Grab the fresh token we just saved during Google authentication
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  // Toggles post likes
-  toggleLike: async (postId: string) => {
-    const res = await api.post(`/posts/${postId}/like`);
-    return res.data;
-  },
+      const response = await axios.get(`${API_BASE_URL}/posts/feed`, {
+        params: {
+          type: filter,
+          page: page,
+        },
+        headers: token ? {
+          Authorization: `Bearer ${token}`
+        } : {}
+      });
 
-  // Deletes owned posts
-  deletePost: async (postId: string) => {
-    const res = await api.delete(`/posts/${postId}`);
-    return res.data;
+      return response.data;
+    } catch (error) {
+      console.error('Failed to stream posts from Render cluster:', error);
+      return []; // Return empty array gracefully to prevent UI crashes
+    }
   }
 };
