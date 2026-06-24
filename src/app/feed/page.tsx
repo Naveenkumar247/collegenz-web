@@ -40,7 +40,11 @@ export default function FeedPage() {
           ? backupToken.slice(1, -1) 
           : backupToken;
 
-        const authHeaders = cleanToken ? { 'Authorization': `Bearer ${cleanToken}` } : {};
+        // 🟢 FIXED: Explicitly declare the Record layout type to avoid any undefined value traps
+        const authHeaders: Record<string, string> = {};
+        if (cleanToken) {
+          authHeaders['Authorization'] = `Bearer ${cleanToken}`;
+        }
 
         // 1. Fetch Featured Panel Cards
         const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/featured', {
@@ -73,11 +77,9 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white px-2 sm:px-4 py-4 font-sans">
-      
-      {/* 🛠️ CORE THREE-COLUMN GRID MATRIX */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        {/* ================= COLUMN 1: LEFT SIDEBAR NAVIGATION (Hidden on Mobile) ================= */}
+        {/* COLUMN 1: LEFT SIDEBAR NAVIGATION */}
         <aside className="hidden lg:block lg:col-span-3 space-y-2 sticky top-4 h-fit">
           <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 space-y-1">
             {[
@@ -105,11 +107,9 @@ export default function FeedPage() {
           </div>
         </aside>
 
-
-        {/* ================= COLUMN 2: CENTER MAIN STREAM FEED CONTENT ================= */}
+        {/* COLUMN 2: CENTER MAIN STREAM FEED CONTENT */}
         <main className="col-span-1 lg:col-span-6 space-y-5">
           
-          {/* 🌟 Horizontal Featured Card Slider Block */}
           {featuredPosts.length > 0 && (
             <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 p-4 rounded-2xl space-y-3 backdrop-blur-md">
               <h2 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 tracking-wide px-1">
@@ -141,7 +141,6 @@ export default function FeedPage() {
             </div>
           )}
 
-          {/* Vertical Post Render Feed Stack Loop */}
           <div className="space-y-4">
             {feedLoading ? (
               <div className="text-center py-12 text-xs text-slate-400 animate-pulse">Assembling content stream...</div>
@@ -155,8 +154,7 @@ export default function FeedPage() {
           </div>
         </main>
 
-
-        {/* ================= COLUMN 3: RIGHT SIDEBAR WIDGET PANEL (Hidden on Mobile) ================= */}
+        {/* COLUMN 3: RIGHT SIDEBAR WIDGET PANEL */}
         <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
           <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 p-5 rounded-2xl text-center space-y-3">
             <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto shadow-sm">
