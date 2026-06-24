@@ -1,11 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { postsService } from '@/services/posts.service';
 import PostCard from '@/components/feed/PostCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
 
 export default function FeedPage() {
   const { isAuthenticated, isLoading, setToken } = useAuthStore((state: any) => state);
@@ -42,14 +40,33 @@ export default function FeedPage() {
       setFeedLoading(true);
       setRawPayload(null);
       
-      const configuredBase = axios.defaults.baseURL || 'Not Set Globally';
-      setTargetUrl(`Base URL Config: ${configuredBase} | Request Path: /posts/feed`);
+      const hardcodedUrl = 'https://collegenz-api.onrender.com/api/v1/posts/feed';
+      setTargetUrl(`NATIVE FETCH SYSTEM | URL: ${hardcodedUrl}`);
       
       try {
-        // Fetching all posts without filtering criteria parameters
-        const feedData = await postsService.getFeed('all', 1);
+        let backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const cleanToken = backupToken?.startsWith('"') && backupToken?.endsWith('"') 
+          ? backupToken.slice(1, -1) 
+          : backupToken;
+
+        // 🟢 USING NATIVE BROWSER FETCH TO BYPASS ALL CONFIG FILE BLOCKS
+        const response = await window.fetch(hardcodedUrl, {
+          method: 'GET',
+          headers: cleanToken ? { 
+            'Authorization': `Bearer ${cleanToken}`,
+            'Content-Type': 'application/json'
+          } : {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP Error! Status: ${response.status}`);
+        }
         
-        setDiagnosticLog(`API Status: 200 OK. Received ${Array.isArray(feedData) ? feedData.length : 0} items.`);
+        const feedData = await response.json();
+        
+        setDiagnosticLog(`API Status: 200 OK. Received ${Array.isArray(feedData) ? feedData.length : 0} items from direct stream.`);
         setRawPayload(JSON.stringify(feedData));
 
         if (Array.isArray(feedData)) {
@@ -58,10 +75,7 @@ export default function FeedPage() {
           setPosts([]);
         }
       } catch (err: any) {
-        const errorMsg = err.response 
-          ? `Error Status ${err.response.status}: ${JSON.stringify(err.response.data)}` 
-          : err.message || 'Network Failure reaching server';
-        setDiagnosticLog(`🚨 Request Failed: ${errorMsg}`);
+        setDiagnosticLog(`🚨 Native Fetch Failed: ${err.message || 'Unknown Network Error'}`);
         console.error(err);
       } finally {
         setFeedLoading(false);
@@ -99,7 +113,7 @@ export default function FeedPage() {
           )}
         </div>
 
-        {/* Unified Single Stream Post Rendering Engine */}
+        {/* Post Rendering System */}
         {feedLoading ? (
           <div className="text-center py-6 text-xs text-slate-500 animate-pulse">Querying database pool...</div>
         ) : posts.length === 0 ? (
