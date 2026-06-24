@@ -7,39 +7,45 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
 export default function FeedPage() {
-  // Pull setToken to hydrate the state if needed
   const { isAuthenticated, isLoading, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
   const [posts, setPosts] = useState<any[]>([]);
   const [filter, setFilter] = useState('recent');
   const [feedLoading, setFeedLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // 1. Sync State Hydration Shield Guard
+  // 1. Mark component as mounted on the client to avoid hydration mismatch
   useEffect(() => {
-    // Check if store is unauthenticated but browser has a token saved
-    const backupToken = localStorage.getItem('token');
+    setIsMounted(true);
+  }, []);
+
+  // 2. Sync State Hydration Shield Guard
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     
     if (backupToken && !isAuthenticated) {
       if (setToken && typeof setToken === 'function') {
         setToken(backupToken);
       }
     } else if (!isLoading && !isAuthenticated && !backupToken) {
-      // If truly no token exists anywhere, kick back to login layout safely
       router.push('/login');
     }
-  }, [isAuthenticated, isLoading, router, setToken]);
+  }, [isAuthenticated, isLoading, router, setToken, isMounted]);
 
-  // 2. Dynamic Data Sync Execution Hook
+  // 3. Dynamic Data Sync Execution Hook
   useEffect(() => {
-    // Let the network request fire if the state is active OR a local storage key exists
-    const hasAccess = isAuthenticated || !!localStorage.getItem('token');
+    if (!isMounted) return;
+
+    const backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const hasAccess = isAuthenticated || !!backupToken;
     
     if (hasAccess) {
       const loadFeed = async () => {
         setFeedLoading(true);
         try {
           const feedData = await postsService.getFeed(filter, 1);
-          // Safety fallback: Ensure feedData is always parsed as an array
           setPosts(Array.isArray(feedData) ? feedData : []);
         } catch (err) {
           console.error('Error compiling network feed:', err);
@@ -49,10 +55,19 @@ export default function FeedPage() {
       };
       loadFeed();
     }
-  }, [filter, isAuthenticated]);
+  }, [filter, isAuthenticated, isMounted]);
 
-  // 3. Render Check (Bypass screen block if local storage token exists)
-  const structuralLoadingCheck = (isLoading || !isAuthenticated) && !localStorage.getItem('token');
+  // 4. Safe Server-Side Rendering Loading Guard
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
+        Connecting...
+      </div>
+    );
+  }
+
+  const hasLocalStorageToken = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
+  const structuralLoadingCheck = (isLoading || !isAuthenticated) && !hasLocalStorageToken;
 
   if (structuralLoadingCheck) {
     return (
