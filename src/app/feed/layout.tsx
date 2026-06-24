@@ -3,7 +3,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import 'bootstrap-icons/font/bootstrap-icons.css';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
