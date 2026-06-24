@@ -40,7 +40,8 @@ export default function FeedPage() {
       setFeedLoading(true);
       setRawPayload(null);
       
-      const hardcodedUrl = 'http://collegenz-api.onrender.com/api/v1/posts/feed';
+      // 🟢 FIXED: Kept securely as https:// to prevent Mixed Content security rejections
+      const hardcodedUrl = 'https://collegenz-api.onrender.com/api/v1/posts/feed';
       setTargetUrl(`NATIVE FETCH SYSTEM | URL: ${hardcodedUrl}`);
       
       try {
@@ -49,7 +50,6 @@ export default function FeedPage() {
           ? backupToken.slice(1, -1) 
           : backupToken;
 
-        // 🟢 USING NATIVE BROWSER FETCH TO BYPASS ALL CONFIG FILE BLOCKS
         const response = await window.fetch(hardcodedUrl, {
           method: 'GET',
           headers: cleanToken ? { 
