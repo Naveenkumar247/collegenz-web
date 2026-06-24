@@ -40,7 +40,7 @@ export default function FeedPage() {
       setFeedLoading(true);
       setRawPayload(null);
       
-      const hardcodedUrl = 'https://collegenz-api.onrender.com/api/v1/posts/feed';
+      const hardcodedUrl = 'http://collegenz-api.onrender.com/api/v1/posts/feed';
       setTargetUrl(`NATIVE FETCH SYSTEM | URL: ${hardcodedUrl}`);
       
       try {
