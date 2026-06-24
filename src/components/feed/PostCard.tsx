@@ -15,7 +15,8 @@ export default function PostCard({ post }: PostCardProps) {
     try {
       const result = await postsService.toggleLike(post._id);
       setHasLiked(result.liked);
-      setLikes((prev) => (result.liked ? prev + 1 : prev - 1));
+      setLikes((prev: number) => (result.liked ? prev + 1 : prev - 1));
+      
     } catch (err) {
       console.error('Failed to register interaction:', err);
     }
