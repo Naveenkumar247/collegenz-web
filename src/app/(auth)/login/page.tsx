@@ -4,20 +4,35 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 
-// 1. Move the interactive hook logic to a sub-component inside the Suspense shield
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const setToken = useAuthStore((state: any) => state.setToken);
+  
+  // 1. Safe extraction: fallback gracefully if your Zustand selector differs
+  const authStore = useAuthStore((state: any) => state);
+  const setToken = authStore?.setToken || authStore?.actions?.setToken;
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
-      setToken(token);
-      router.replace('/feed');
+    try {
+      const token = searchParams.get('token');
+      if (token) {
+        // 2. Backup Strategy: Save to browser local storage so headers stay hydrated
+        localStorage.setItem('token', token);
+        
+        // 3. Execution Guard: Only execute if store slice is present
+        if (setToken && typeof setToken === 'function') {
+          setToken(token);
+        } else {
+          console.warn("Zustand 'setToken' action not found. Auth saved to localStorage.");
+        }
+        
+        router.replace('/feed');
+      }
+    } catch (error) {
+      console.error("Failed to process Google login redirect:", error);
     }
   }, [searchParams, router, setToken]);
 
@@ -88,7 +103,6 @@ function LoginContent() {
   );
 }
 
-// 2. Default export page component wraps everything in Suspense
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4">
