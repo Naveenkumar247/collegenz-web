@@ -10,7 +10,7 @@ export default function FeedPage() {
   // Pull setToken to hydrate the state if needed
   const { isAuthenticated, isLoading, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState<any[]>([]);
   const [filter, setFilter] = useState('recent');
   const [feedLoading, setFeedLoading] = useState(true);
 
