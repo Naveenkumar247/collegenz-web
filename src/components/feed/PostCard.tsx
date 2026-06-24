@@ -1,87 +1,47 @@
 'use client';
 
-import React, { useState } from 'react';
-import { postsService } from '@/services/posts.service';
+import React from 'react';
 
-interface PostCardProps {
-  post: any;
-}
-
-export default function PostCard({ post }: PostCardProps) {
-  const [likes, setLikes] = useState(post.likes || 0);
-  const [hasLiked, setHasLiked] = useState(post.hasLiked || false);
-
-  const handleLike = async () => {
-    try {
-      const result = await postsService.toggleLike(post._id);
-      setHasLiked(result.liked);
-      setLikes((prev: number) => (result.liked ? prev + 1 : prev - 1));
-      
-    } catch (err) {
-      console.error('Failed to register interaction:', err);
-    }
-  };
-
+export default function PostCard({ post }: { post: any }) {
   return (
-    <div className="w-full backdrop-blur-md bg-white/5 border border-white/10 rounded-xl p-5 shadow-lg transition-all duration-200 hover:border-white/20">
-      {/* Header Profile Section */}
-      <div className="flex items-center space-x-3 mb-4">
-        <img
-          src={post.picture || 'https://collegenz.in/uploads/profilepic.jpg'}
-          alt={post.username}
-          className="w-10 h-10 rounded-full object-cover border border-white/20"
-        />
-        <div>
-          <div className="flex items-center space-x-2">
-            <h3 className="font-semibold text-white text-sm">{post.username || 'Student'}</h3>
-            {post.postType !== 'general' && (
-              <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                post.postType === 'event' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-              }`}>
-                {post.postType}
-              </span>
-            )}
+    <div className="bg-white border border-[#cbd5e1] rounded-xl p-4 shadow-sm space-y-3">
+      {/* User Header Section */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <img 
+            src={post.author?.picture || 'https://www.svgrepo.com/show/532362/user.svg'} 
+            className="w-9 h-9 rounded-full object-cover border border-slate-100"
+            alt="Profile pic"
+          />
+          <div>
+            <h4 className="text-xs font-bold font-['Poppins'] text-slate-800 m-0">{post.author?.username}</h4>
+            <p className="text-[10px] text-slate-400 m-0">{new Date(post.createdAt).toLocaleDateString()}</p>
           </div>
-          <p className="text-xs text-slate-400 truncate max-w-[250px]">{post.college || 'Verified Member'}</p>
         </div>
+        <button className="text-slate-400 hover:text-slate-600 bg-transparent border-0"><i className="bi bi-three-dots"></i></button>
       </div>
 
-      {/* Dynamic Main Body Segment */}
-      <p className="text-slate-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{post.data}</p>
-
-      {/* Conditional Rendering for Event Type Posts */}
-      {post.postType === 'event' && (
-        <div className="mb-4 p-3 bg-amber-500/5 rounded-lg border border-amber-500/10 text-xs space-y-1">
-          <div className="text-amber-300 font-medium">📅 Event: {post.event_title}</div>
-          <div className="text-slate-300">📍 Location: {post.event_location} ({post.event_mode})</div>
+      {/* Main Post Image Layer from Cloudinary */}
+      {post.image && (
+        <div className="w-full max-h-[380px] rounded-lg overflow-hidden bg-slate-50 border border-slate-100">
+          <img src={post.image} className="w-full h-full object-contain mx-auto" alt="Post attachment Content" />
         </div>
       )}
 
-      {/* Conditional Rendering for Hiring Type Posts */}
-      {post.postType === 'hiring' && (
-        <div className="mb-4 p-3 bg-emerald-500/5 rounded-lg border border-emerald-500/10 text-xs space-y-1">
-          <div className="text-emerald-300 font-medium">💼 Role: {post.job_title}</div>
-          <div className="text-slate-300">🏢 Location: {post.job_location} ({post.job_mode})</div>
-        </div>
-      )}
+      {/* Text Captions */}
+      <p className="text-xs text-slate-600 leading-relaxed font-['Open+Sans'] m-0">
+        {post.caption}
+      </p>
 
-      {/* Media Attachments */}
-      {post.imageurl && post.imageurl.length > 0 && (
-        <div className="mb-4 overflow-hidden rounded-xl border border-white/10">
-          <img src={post.imageurl[0]} alt="Post attachment" className="w-full object-cover max-h-72" />
-        </div>
-      )}
-
-      {/* Bottom Action Ribbons */}
-      <div className="flex items-center border-t border-white/10 pt-3 text-slate-400 text-xs">
-        <button
-          onClick={handleLike}
-          className={`flex items-center space-x-2 transition-colors ${
-            hasLiked ? 'text-indigo-400 font-medium' : 'hover:text-white'
-          }`}
-        >
-          <span>{hasLiked ? '❤️' : '👍'}</span>
-          <span>{likes} {likes === 1 ? 'Like' : 'Likes'}</span>
+      {/* Interaction Bar Actions */}
+      <div className="flex items-center gap-4 pt-1 text-slate-500 text-sm">
+        <button className={`flex items-center gap-1.5 bg-transparent border-0 text-xs ${post.hasLiked ? 'text-red-500' : 'hover:text-red-500'}`}>
+          <i className={`bi ${post.hasLiked ? 'bi-heart-fill' : 'bi-heart'}`}></i>
+          <span>{post.likesCount || 0}</span>
+        </button>
+        <button className="flex items-center gap-1.5 bg-transparent border-0 text-xs hover:text-indigo-600">
+          <i className="bi bi-send"></i>
+          <span>Share</span>
         </button>
       </div>
     </div>
