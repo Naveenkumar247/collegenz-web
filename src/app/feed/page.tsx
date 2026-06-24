@@ -9,13 +9,9 @@ export default function FeedPage() {
   const { isAuthenticated, isLoading, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
   const [posts, setPosts] = useState<any[]>([]);
+  const [featuredPosts, setFeaturedPosts] = useState<any[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
-  
-  // Mobile Network Debug Logs
-  const [diagnosticLog, setDiagnosticLog] = useState<string>('Initializing network stream...');
-  const [targetUrl, setTargetUrl] = useState<string>('Detecting outbound path...');
-  const [rawPayload, setRawPayload] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -36,97 +32,146 @@ export default function FeedPage() {
   useEffect(() => {
     if (!isMounted) return;
 
-    const loadFeed = async () => {
+    const loadDataPools = async () => {
       setFeedLoading(true);
-      setRawPayload(null);
-      
-      // 🟢 FIXED: Kept securely as https:// to prevent Mixed Content security rejections
-      const hardcodedUrl = 'https://collegenz-api.onrender.com/api/v1/posts/feed';
-      setTargetUrl(`NATIVE FETCH SYSTEM | URL: ${hardcodedUrl}`);
-      
       try {
         let backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const cleanToken = backupToken?.startsWith('"') && backupToken?.endsWith('"') 
           ? backupToken.slice(1, -1) 
           : backupToken;
 
-        const response = await window.fetch(hardcodedUrl, {
-          method: 'GET',
-          headers: cleanToken ? { 
-            'Authorization': `Bearer ${cleanToken}`,
-            'Content-Type': 'application/json'
-          } : {
-            'Content-Type': 'application/json'
-          }
+        const authHeaders = cleanToken ? { 'Authorization': `Bearer ${cleanToken}` } : {};
+
+        // 1. Fetch Featured Panel Cards
+        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/featured', {
+          headers: authHeaders
         });
-
-        if (!response.ok) {
-          throw new Error(`HTTP Error! Status: ${response.status}`);
+        if (featuredRes.ok) {
+          const featuredData = await featuredRes.json();
+          setFeaturedPosts(Array.isArray(featuredData) ? featuredData : []);
         }
-        
-        const feedData = await response.json();
-        
-        setDiagnosticLog(`API Status: 200 OK. Received ${Array.isArray(feedData) ? feedData.length : 0} items from direct stream.`);
-        setRawPayload(JSON.stringify(feedData));
 
-        if (Array.isArray(feedData)) {
-          setPosts(feedData);
-        } else {
-          setPosts([]);
+        // 2. Fetch General Scroll Feed Posts
+        const feedRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/feed', {
+          headers: authHeaders
+        });
+        if (feedRes.ok) {
+          const feedData = await feedRes.json();
+          setPosts(Array.isArray(feedData) ? feedData : []);
         }
-      } catch (err: any) {
-        setDiagnosticLog(`🚨 Native Fetch Failed: ${err.message || 'Unknown Network Error'}`);
-        console.error(err);
+      } catch (err) {
+        console.error('Data pool connection failed:', err);
       } finally {
         setFeedLoading(false);
       }
     };
 
-    loadFeed();
+    loadDataPools();
   }, [isMounted]);
 
   if (!isMounted) return <div className="p-6 text-white text-xs font-mono">Connecting Gateway...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white px-4 py-6 font-sans">
-      <div className="max-w-xl mx-auto space-y-4">
-        
-        {/* 📱 DIAGNOSTIC TRACE PANEL */}
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl font-mono text-xs space-y-2">
-          <p className="text-indigo-400 font-bold">📡 Mobile API Network Console:</p>
-          <div className="p-2 bg-black/40 rounded border border-white/5 text-slate-300 break-all">
-            {diagnosticLog}
-          </div>
-          
-          <p className="text-amber-400 font-bold text-[11px] pt-1">🔍 Outbound Network Target Path:</p>
-          <div className="p-2 bg-black/60 rounded border border-amber-500/20 text-amber-200 text-[11px] break-all">
-            {targetUrl}
-          </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white px-2 sm:px-4 py-4 font-sans">
+      
+      {/* 🛠️ CORE THREE-COLUMN GRID MATRIX */}
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          {rawPayload && (
-            <div>
-              <p className="text-emerald-400 font-bold mt-2">📦 Raw Server Response Payload:</p>
-              <pre className="p-2 bg-black/40 rounded border border-white/5 text-slate-400 overflow-x-auto max-h-40 text-[10px]">
-                {rawPayload}
-              </pre>
-            </div>
-          )}
-        </div>
-
-        {/* Post Rendering System */}
-        {feedLoading ? (
-          <div className="text-center py-6 text-xs text-slate-500 animate-pulse">Querying database pool...</div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-10 bg-slate-900/50 border border-slate-800 rounded-xl text-slate-400 text-xs">
-            Query returned no renderable posts.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {posts.map((item: any) => (
-              <PostCard key={item._id} post={item} />
+        {/* ================= COLUMN 1: LEFT SIDEBAR NAVIGATION (Hidden on Mobile) ================= */}
+        <aside className="hidden lg:block lg:col-span-3 space-y-2 sticky top-4 h-fit">
+          <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 space-y-1">
+            {[
+              { label: 'Home', icon: '🏠', active: true },
+              { label: 'Community Hubs', icon: '👥' },
+              { label: 'Courses', icon: '📚' },
+              { label: 'Internships', icon: '💼' },
+              { label: 'Placements', icon: '🎓' },
+              { label: 'Events', icon: '📅' },
+              { label: 'Crypto Wallet', icon: '🪙' },
+              { label: 'Settings', icon: '⚙️' },
+            ].map((nav) => (
+              <button
+                key={nav.label}
+                className={`w-full flex items-center space-x-3 px-4 py-2.5 text-xs font-medium rounded-xl transition-all border-0 text-left ${
+                  nav.active 
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' 
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 bg-transparent'
+                }`}
+              >
+                <span className="text-sm">{nav.icon}</span>
+                <span>{nav.label}</span>
+              </button>
             ))}
           </div>
-        )}
+        </aside>
+
+
+        {/* ================= COLUMN 2: CENTER MAIN STREAM FEED CONTENT ================= */}
+        <main className="col-span-1 lg:col-span-6 space-y-5">
+          
+          {/* 🌟 Horizontal Featured Card Slider Block */}
+          {featuredPosts.length > 0 && (
+            <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 p-4 rounded-2xl space-y-3 backdrop-blur-md">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 tracking-wide px-1">
+                Featured Post
+              </h2>
+              
+              <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-none snap-x overflow-y-hidden">
+                {featuredPosts.map((feat: any) => (
+                  <div 
+                    key={feat._id} 
+                    className="flex-shrink-0 w-28 h-44 sm:w-36 sm:h-56 rounded-xl relative overflow-hidden snap-start group border border-slate-200 dark:border-white/10 bg-cover bg-center shadow-sm"
+                    style={{ backgroundImage: `url(${feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/30" />
+                    
+                    <div className="absolute top-1.5 left-1.5 flex items-center space-x-1 bg-black/40 backdrop-blur-md py-0.5 px-1.5 rounded-full border border-white/5 max-w-[90%]">
+                      <img src={feat.author.picture} alt="" className="w-3 h-3 rounded-full object-cover" />
+                      <span className="text-[8px] text-slate-300 truncate">{feat.author.username}</span>
+                    </div>
+
+                    <div className="absolute bottom-2 inset-x-2">
+                      <p className="text-[9px] sm:text-[10px] text-white font-medium line-clamp-2 leading-relaxed">
+                        {feat.caption}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Vertical Post Render Feed Stack Loop */}
+          <div className="space-y-4">
+            {feedLoading ? (
+              <div className="text-center py-12 text-xs text-slate-400 animate-pulse">Assembling content stream...</div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-10 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 text-xs">
+                No recent feed content found.
+              </div>
+            ) : (
+              posts.map((item: any) => <PostCard key={item._id} post={item} />)
+            )}
+          </div>
+        </main>
+
+
+        {/* ================= COLUMN 3: RIGHT SIDEBAR WIDGET PANEL (Hidden on Mobile) ================= */}
+        <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
+          <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 p-5 rounded-2xl text-center space-y-3">
+            <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto shadow-sm">
+              <span className="text-lg text-emerald-500 font-bold">❓</span>
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xs font-bold text-emerald-800 dark:text-emerald-400">
+                Do you know what is going on?
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed px-1">
+                Connect globally with college networks, trace ongoing placement seasons, and trade info metrics seamlessly.
+              </p>
+            </div>
+          </div>
+        </aside>
 
       </div>
     </div>
