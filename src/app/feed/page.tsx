@@ -7,27 +7,40 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
 export default function FeedPage() {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  // Pull setToken to hydrate the state if needed
+  const { isAuthenticated, isLoading, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
   const [posts, setPosts] = useState([]);
   const [filter, setFilter] = useState('recent');
   const [feedLoading, setFeedLoading] = useState(true);
 
-  // Auth Protection Shield Check
+  // 1. Sync State Hydration Shield Guard
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // Check if store is unauthenticated but browser has a token saved
+    const backupToken = localStorage.getItem('token');
+    
+    if (backupToken && !isAuthenticated) {
+      if (setToken && typeof setToken === 'function') {
+        setToken(backupToken);
+      }
+    } else if (!isLoading && !isAuthenticated && !backupToken) {
+      // If truly no token exists anywhere, kick back to login layout safely
       router.push('/login');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, router, setToken]);
 
-  // Dynamic Data Sync Execution Hook
+  // 2. Dynamic Data Sync Execution Hook
   useEffect(() => {
-    if (isAuthenticated) {
+    // Let the network request fire if the state is active OR a local storage key exists
+    const hasAccess = isAuthenticated || !!localStorage.getItem('token');
+    
+    if (hasAccess) {
       const loadFeed = async () => {
         setFeedLoading(true);
         try {
           const feedData = await postsService.getFeed(filter, 1);
-          setPosts(feedData);
+          // Safety fallback: Ensure feedData is always parsed as an array
+          setPosts(Array.isArray(feedData) ? feedData : []);
         } catch (err) {
           console.error('Error compiling network feed:', err);
         } finally {
@@ -38,10 +51,16 @@ export default function FeedPage() {
     }
   }, [filter, isAuthenticated]);
 
-  if (isLoading || !isAuthenticated) {
+  // 3. Render Check (Bypass screen block if local storage token exists)
+  const structuralLoadingCheck = (isLoading || !isAuthenticated) && !localStorage.getItem('token');
+
+  if (structuralLoadingCheck) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
-        Authenticating gateway connection...
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm tracking-wide">
+        <div className="flex flex-col items-center space-y-3">
+          <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <span>Authenticating gateway connection...</span>
+        </div>
       </div>
     );
   }
