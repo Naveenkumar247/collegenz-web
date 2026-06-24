@@ -1,71 +1,57 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const login = useAuthStore((state) => state.login);
   const router = useRouter();
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    try {
-      await login({ email, password });
-      router.push('/feed'); // Redirects directly to the student networking feed
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid credentials verified.');
-    }
+    // Your authentication trigger logic will go here
+    router.push('/feed');
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-4">
-      {/* Glassmorphic Container Card */}
-      <div className="w-full max-w-md backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl p-8 shadow-2xl transition-all duration-300">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white tracking-tight">CollegenZ</h1>
-          <p className="text-slate-300 text-sm mt-2">The AI-Powered Student Ecosystem</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4">
+      {/* Premium Glassmorphic Card Container */}
+      <div className="w-full max-w-md backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-2xl shadow-2xl space-y-6">
+        
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight text-white">CollegenZ</h1>
+          <p className="text-sm text-slate-400">The AI-Powered Student Ecosystem</p>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/40 text-red-200 text-sm rounded-lg text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-slate-200 text-xs font-semibold mb-2 uppercase tracking-wider">Email Address</label>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-300">Email Address</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
               placeholder="you@college.edu"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-slate-200 text-xs font-semibold mb-2 uppercase tracking-wider">Password</label>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-300">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
               placeholder="••••••••"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               required
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/30 mt-4"
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-all duration-200 mt-2 active:scale-[0.98]"
           >
             Sign In
           </button>
