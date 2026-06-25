@@ -5,27 +5,37 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const { isAuthenticated, isLoading } = useAuthStore((state: any) => state);
+  const { isAuthenticated, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!isMounted || isLoading) return;
+    if (!isMounted) return;
 
-    // 🟢 INTERCEPTION GATEWAY: If not logged in, pass redirect tracking parameter to login page
-    if (!isAuthenticated) {
+    // 🟢 SOLID CHECK: Read local token storage directly on page initialization
+    const backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    if (backupToken) {
+      if (!isAuthenticated && setToken) {
+        setToken(backupToken);
+      }
+      setCheckingAuth(false);
+    } else {
+      // 🚨 INTERCEPTION GATE: No credentials found, redirect to login page immediately
       router.push('/login?redirectTo=/profile');
     }
-  }, [isAuthenticated, isLoading, isMounted, router]);
+  }, [isAuthenticated, isMounted, router, setToken]);
 
-  if (!isMounted || isLoading || !isAuthenticated) {
+  // Prevent UI rendering structural flips before client hydration completes
+  if (!isMounted || checkingAuth) {
     return (
-      <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center font-sans text-xs text-slate-500">
-        Verifying secure profile profile validation stream...
+      <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center font-sans text-xs text-slate-400">
+        Authenticating Profile Channel Securely...
       </div>
     );
   }
@@ -47,7 +57,7 @@ export default function ProfilePage() {
 
         <hr className="border-slate-100" />
 
-        {/* Placeholder Info Grid layout block element */}
+        {/* Info Grid layout block element */}
         <div className="space-y-3 text-xs">
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/40">
             <span className="font-semibold text-slate-500 block mb-0.5">Account Privileges</span>
@@ -62,6 +72,8 @@ export default function ProfilePage() {
         <button 
           onClick={() => {
             localStorage.removeItem('token');
+            // Force reset global store token state if available
+            if (setToken) setToken(null);
             window.location.href = '/feed';
           }}
           className="w-full bg-red-50 border-0 hover:bg-red-100/80 text-red-600 text-xs font-semibold py-2.5 rounded-xl transition-all cursor-pointer"
