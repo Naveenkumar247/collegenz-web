@@ -75,43 +75,13 @@ export default function FeedPage() {
   if (!isMounted) return <div className="p-6 text-slate-500 text-xs font-mono">Connecting Gateway...</div>;
 
   return (
-    // 🟢 Outer container set to a light theme background matching your exact desktop layout
     <div className="min-h-screen bg-[#f3f4f6] text-slate-900 px-2 sm:px-4 py-4 font-sans">
       
-      {/* 🛠️ CORE THREE-COLUMN GRID MATRIX */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5">
+      {/* 🛠️ ADJUSTED RESPONSIVE GRID GRID (Now 8 units wide to pair with your global sidebar) */}
+      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-8 gap-5">
 
-        {/* ================= COLUMN 1: LEFT SIDEBAR NAVIGATION ================= */}
-        <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-3 space-y-0.5 shadow-sm">
-            {[
-              { label: 'Home', icon: '🏠', active: true },
-              { label: 'Community Hubs', icon: '👥' },
-              { label: 'Courses', icon: '📚' },
-              { label: 'Internships', icon: '💼' },
-              { label: 'Placements', icon: '🎓' },
-              { label: 'Events', icon: '📅' },
-              { label: 'Crypto Wallet', icon: '🪙' },
-              { label: 'Settings', icon: '⚙️' },
-            ].map((nav) => (
-              <button
-                key={nav.label}
-                className={`w-full flex items-center space-x-3 px-4 py-2 text-xs font-medium rounded-xl transition-all border-0 text-left ${
-                  nav.active 
-                    ? 'bg-emerald-50 text-emerald-600 font-semibold' 
-                    : 'text-slate-600 hover:bg-slate-50 bg-transparent'
-                }`}
-              >
-                <span className="text-sm opacity-80">{nav.icon}</span>
-                <span>{nav.label}</span>
-              </button>
-            ))}
-          </div>
-        </aside>
-
-
-        {/* ================= COLUMN 2: CENTER MAIN STREAM FEED CONTENT ================= */}
-        <main className="col-span-1 lg:col-span-6 space-y-4">
+        {/* ================= COLUMN 1: CENTER MAIN STREAM FEED CONTENT ================= */}
+        <main className="col-span-1 lg:col-span-5 space-y-4">
           
           {/* 🌟 Horizontal Featured Card Slider Block */}
           {featuredPosts.length > 0 && (
@@ -127,10 +97,8 @@ export default function FeedPage() {
                     className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm"
                     style={{ backgroundImage: `url(${feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
                   >
-                    {/* Shadow overlay matching the desktop mockup cards */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     
-                    {/* User identifier tag info layout element */}
                     <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/20 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10 max-w-[90%]">
                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20" />
                       <span className="text-[8px] text-white font-medium truncate">User</span>
@@ -161,8 +129,7 @@ export default function FeedPage() {
           </div>
         </main>
 
-
-        {/* ================= COLUMN 3: RIGHT SIDEBAR WIDGET PANEL ================= */}
+        {/* ================= COLUMN 2: RIGHT SIDEBAR WIDGET PANEL ================= */}
         <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
           <div className="bg-[#eefbf4] border border-emerald-100 p-5 rounded-2xl text-center space-y-3 shadow-sm">
             <div className="w-10 h-10 rounded-full bg-white border border-emerald-200 flex items-center justify-center mx-auto shadow-sm">
