@@ -37,7 +37,6 @@ export default function LoginPage() {
         localStorage.setItem('token', data.token);
         if (setToken) setToken(data.token);
 
-        // 🟢 FIXED: Extract destination out of session storage memory, clear it, then redirect
         const savedRedirect = sessionStorage.getItem('authRedirectTarget') || '/feed';
         sessionStorage.removeItem('authRedirectTarget');
         
@@ -47,13 +46,12 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Unable to contact authentication gateway.');
-    } finaly {
+    } finally { // 🟢 FIXED: Spelled correctly with double 'll'
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = () => {
-    // URL stays perfectly static, satisfying Google Console URI whitelist matching!
     window.location.href = 'https://collegenz-api.onrender.com/api/v1/auth/google';
   };
 
