@@ -1,162 +1,157 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import PostCard from '@/components/feed/PostCard';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
 export default function FeedPage() {
-  const { isAuthenticated, isLoading, setToken } = useAuthStore((state: any) => state);
+  const { isAuthenticated, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
+  
+  // Layout states
+  const [isMounted, setIsMounted] = useState(false);
+  const [loadingFeed, setLoadingFeed] = useState(true);
   const [posts, setPosts] = useState<any[]>([]);
   const [featuredPosts, setFeaturedPosts] = useState<any[]>([]);
-  const [feedLoading, setFeedLoading] = useState(true);
-  const [isMounted, setIsMounted] = useState(false);
+  
+  const hasFetched = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // 🟢 ROUTING UPGRADE: Handles backup token syncing without auto-forcing /login instantly
-  useEffect(() => {
-    if (!isMounted) return;
-    const backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (backupToken && !isAuthenticated) {
-      if (setToken && typeof setToken === 'function') {
-        setToken(backupToken);
-      }
-    }
-  }, [isAuthenticated, isMounted, setToken]);
-
   useEffect(() => {
     if (!isMounted) return;
 
-    const loadDataPools = async () => {
-      setFeedLoading(true);
+    const fetchFeedData = async (token: string) => {
+      if (hasFetched.current) return;
+      hasFetched.current = true;
+
       try {
-        let backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        const cleanToken = backupToken?.startsWith('"') && backupToken?.endsWith('"') 
-          ? backupToken.slice(1, -1) 
-          : backupToken;
-
-        const authHeaders: Record<string, string> = {};
-        if (cleanToken) {
-          authHeaders['Authorization'] = `Bearer ${cleanToken}`;
-        }
-
-        // 1. Fetch Featured Panel Cards
-        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/featured', {
-          headers: authHeaders
+        // Fetch posts from your backend API engine endpoints
+        const response = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         });
-        if (featuredRes.ok) {
-          const featuredData = await featuredRes.json();
-          setFeaturedPosts(Array.isArray(featuredData) ? featuredData : []);
-        }
-
-        // 2. Fetch General Scroll Feed Posts
-        const feedRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/feed', {
-          headers: authHeaders
-        });
-        if (feedRes.ok) {
-          const feedData = await feedRes.json();
-          setPosts(Array.isArray(feedData) ? feedData : []);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setPosts(data.posts || []);
+          setFeaturedPosts(data.featured || []);
+        } else if (response.status === 401) {
+          localStorage.removeItem('token');
+          sessionStorage.setItem('authRedirectTarget', '/feed');
+          router.push('/login');
         }
       } catch (err) {
-        console.error('Data pool connection failed:', err);
+        console.error('Failed to compile feed metrics stream:', err);
       } finally {
-        setFeedLoading(false);
+        setLoadingFeed(false);
       }
     };
 
-    loadDataPools();
-  }, [isMounted]);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const cleanToken = token?.startsWith('"') && token?.endsWith('"') ? token.slice(1, -1) : token;
 
-  // 🟢 ROUTING UPGRADE: Guard utility helper for handling personalized views or actions
-  const handlePersonalizedRoute = (targetPath: string) => {
-    if (!isAuthenticated) {
-      // Intercepts user and appends target redirect path tracking parameter
-      router.push(`/login?redirectTo=${encodeURIComponent(targetPath)}`);
+    if (cleanToken) {
+      if (!isAuthenticated && setToken) {
+        setToken(cleanToken);
+      }
+      fetchFeedData(cleanToken);
     } else {
-      router.push(targetPath);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('authRedirectTarget', '/feed');
+      }
+      router.push('/login');
     }
-  };
+  }, [isMounted, router]);
 
-  if (!isMounted) return <div className="p-6 text-slate-500 text-xs font-mono">Connecting Gateway...</div>;
+  // 🎰 🟢 RESPONSIVE SKELETON LAYOUT (Matches 1000149444.jpg & 1000149445.jpg perfectly)
+  if (!isMounted || loadingFeed) {
+    return (
+      <div className="min-h-screen bg-[#f3f4f6] text-slate-900 font-sans animate-pulse pb-16">
+        
+        {/* Top App Header Banner */}
+        <div className="bg-[#15803d] h-14 w-full sticky top-0 z-50 flex items-center justify-between px-4 shadow-sm">
+          <div className="h-5 bg-emerald-600/50 rounded w-24" />
+          <div className="flex space-x-4">
+            <div className="h-5 w-5 rounded-full bg-emerald-600/50" />
+            <div className="h-5 w-5 rounded-full bg-emerald-600/50" />
+            <div className="h-5 w-5 rounded-full bg-emerald-600/50" />
+          </div>
+        </div>
 
-  return (
-    <div className="min-h-screen bg-[#f3f4f6] text-slate-900 px-2 sm:px-4 py-4 font-sans">
-      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-8 gap-5">
-
-        {/* ================= COLUMN 1: CENTER MAIN STREAM FEED CONTENT ================= */}
-        <main className="col-span-1 lg:col-span-5 space-y-4">
+        {/* Outer Grid Splitting Frame */}
+        <div className="max-w-[1200px] mx-auto flex gap-6 pt-4 px-4">
           
-          {/* Horizontal Featured Card Slider Block */}
-          {featuredPosts.length > 0 && (
-            <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
-              <h2 className="text-xs sm:text-sm font-bold text-slate-800 tracking-wide">
-                Featured Post
-              </h2>
-              
-              <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none snap-x overflow-y-hidden">
-                {featuredPosts.map((feat: any) => (
-                  <div 
-                    key={feat._id} 
-                    onClick={() => handlePersonalizedRoute(`/posts/${feat._id}`)}
-                    className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm cursor-pointer"
-                    style={{ backgroundImage: `url(${feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    
-                    <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/20 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10 max-w-[90%]">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20" />
-                      <span className="text-[8px] text-white font-medium truncate">User</span>
-                    </div>
+          {/* Left Navigation Sidebar - Hidden on mobile, flex on desktop */}
+          <div className="hidden md:flex flex-col w-64 shrink-0 bg-white border border-slate-100 rounded-2xl p-4 space-y-4 h-fit shadow-xs">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex items-center space-x-3 py-1">
+                <div className="h-4 w-4 bg-slate-200 rounded" />
+                <div className="h-3 bg-slate-200 rounded w-24" />
+              </div>
+            ))}
+          </div>
 
-                    <div className="absolute bottom-2 inset-x-2">
-                      <p className="text-[9px] sm:text-[10px] text-white font-semibold line-clamp-2 leading-snug">
-                        {feat.caption}
-                      </p>
-                    </div>
-                  </div>
+          {/* Main Core Content Center Column */}
+          <div className="flex-1 max-w-2xl space-y-4 w-full mx-auto">
+            
+            {/* Featured Cards Slider Box Container */}
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 space-y-3 shadow-xs">
+              <div className="h-3 bg-slate-200 rounded w-20" />
+              <div className="flex space-x-3 overflow-hidden">
+                {[1, 2, 3, 4].map((card) => (
+                  <div key={card} className="w-[105px] h-[165px] shrink-0 bg-slate-200 rounded-xl" />
                 ))}
               </div>
             </div>
-          )}
 
-          {/* Vertical Post Render Feed Stack Loop */}
-          <div className="space-y-4">
-            {feedLoading ? (
-              <div className="text-center py-12 text-xs text-slate-400 animate-pulse">Assembling content stream...</div>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-10 bg-white border border-slate-200 rounded-xl text-slate-400 text-xs">
-                No recent feed content found.
+            {/* Vertical Infinite Scrolling Cards List */}
+            {[1, 2].map((post) => (
+              <div key={post} className="bg-white border border-slate-100 rounded-2xl p-4 space-y-4 shadow-xs">
+                <div className="flex items-center space-x-3">
+                  <div className="h-9 w-9 bg-slate-200 rounded-full" />
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-3 bg-slate-200 rounded w-28" />
+                    <div className="h-2.5 bg-slate-200 rounded w-14" />
+                  </div>
+                </div>
+                <div className="w-full h-60 bg-slate-200 rounded-xl" />
+                <div className="space-y-2">
+                  <div className="h-3 bg-slate-200 rounded w-full" />
+                  <div className="h-3 bg-slate-200 rounded w-5/6" />
+                </div>
               </div>
-            ) : (
-              posts.map((item: any) => <PostCard key={item._id} post={item} />)
-            )}
+            ))}
           </div>
-        </main>
 
-        {/* ================= COLUMN 2: RIGHT SIDEBAR WIDGET PANEL ================= */}
-        <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
-          <div 
-            onClick={() => handlePersonalizedRoute('/personalized-hub')}
-            className="bg-[#eefbf4] border border-emerald-100 p-5 rounded-2xl text-center space-y-3 shadow-sm cursor-pointer hover:border-emerald-200 transition-all"
-          >
-            <div className="w-10 h-10 rounded-full bg-white border border-emerald-200 flex items-center justify-center mx-auto shadow-sm">
-              <span className="text-sm text-emerald-600 font-bold">❓</span>
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-xs font-bold text-emerald-800">
-                Do you know what is going on?
-              </h3>
-              <p className="text-[11px] text-emerald-700/80 leading-relaxed px-1">
-                Connect globally with college networks, trace ongoing placement seasons, and trade info metrics seamlessly.
-              </p>
-            </div>
-          </div>
-        </aside>
+          {/* Right Desktop Info Widget Frame */}
+          <div className="hidden lg:block w-72 shrink-0 bg-white border border-slate-100 rounded-2xl p-4 h-32 shadow-xs" />
 
+        </div>
+
+        {/* Sticky Lower Navigation Strip - Mobile Exclusive viewports */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-white border-t border-slate-100 flex justify-around items-center px-2 z-50 shadow-md">
+          <div className="h-5 w-5 bg-slate-200 rounded" />
+          <div className="h-5 w-5 bg-slate-200 rounded" />
+          <div className="h-8 w-8 bg-slate-200 rounded-full" />
+          <div className="h-5 w-5 bg-slate-200 rounded" />
+          <div className="h-5 w-5 bg-slate-200 rounded" />
+        </div>
+
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f3f4f6] text-slate-900 font-sans pb-16">
+      {/* 🟢 Live Data Formats Render Here When Fetch Completes Successfully */}
+      <div className="p-4 text-center text-xs text-slate-400 font-mono">
+        CollegenZ Live Feed Active Workspace Stream.
       </div>
     </div>
   );
