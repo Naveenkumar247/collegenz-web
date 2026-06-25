@@ -17,6 +17,7 @@ export default function FeedPage() {
     setIsMounted(true);
   }, []);
 
+  // 🟢 ROUTING UPGRADE: Handles backup token syncing without auto-forcing /login instantly
   useEffect(() => {
     if (!isMounted) return;
     const backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -24,10 +25,8 @@ export default function FeedPage() {
       if (setToken && typeof setToken === 'function') {
         setToken(backupToken);
       }
-    } else if (!isLoading && !isAuthenticated && !backupToken) {
-      router.push('/login');
     }
-  }, [isAuthenticated, isLoading, router, setToken, isMounted]);
+  }, [isAuthenticated, isMounted, setToken]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -72,18 +71,26 @@ export default function FeedPage() {
     loadDataPools();
   }, [isMounted]);
 
+  // 🟢 ROUTING UPGRADE: Guard utility helper for handling personalized views or actions
+  const handlePersonalizedRoute = (targetPath: string) => {
+    if (!isAuthenticated) {
+      // Intercepts user and appends target redirect path tracking parameter
+      router.push(`/login?redirectTo=${encodeURIComponent(targetPath)}`);
+    } else {
+      router.push(targetPath);
+    }
+  };
+
   if (!isMounted) return <div className="p-6 text-slate-500 text-xs font-mono">Connecting Gateway...</div>;
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] text-slate-900 px-2 sm:px-4 py-4 font-sans">
-      
-      {/* 🛠️ ADJUSTED RESPONSIVE GRID GRID (Now 8 units wide to pair with your global sidebar) */}
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-8 gap-5">
 
         {/* ================= COLUMN 1: CENTER MAIN STREAM FEED CONTENT ================= */}
         <main className="col-span-1 lg:col-span-5 space-y-4">
           
-          {/* 🌟 Horizontal Featured Card Slider Block */}
+          {/* Horizontal Featured Card Slider Block */}
           {featuredPosts.length > 0 && (
             <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
               <h2 className="text-xs sm:text-sm font-bold text-slate-800 tracking-wide">
@@ -94,7 +101,8 @@ export default function FeedPage() {
                 {featuredPosts.map((feat: any) => (
                   <div 
                     key={feat._id} 
-                    className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm"
+                    onClick={() => handlePersonalizedRoute(`/posts/${feat._id}`)}
+                    className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm cursor-pointer"
                     style={{ backgroundImage: `url(${feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -131,7 +139,10 @@ export default function FeedPage() {
 
         {/* ================= COLUMN 2: RIGHT SIDEBAR WIDGET PANEL ================= */}
         <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
-          <div className="bg-[#eefbf4] border border-emerald-100 p-5 rounded-2xl text-center space-y-3 shadow-sm">
+          <div 
+            onClick={() => handlePersonalizedRoute('/personalized-hub')}
+            className="bg-[#eefbf4] border border-emerald-100 p-5 rounded-2xl text-center space-y-3 shadow-sm cursor-pointer hover:border-emerald-200 transition-all"
+          >
             <div className="w-10 h-10 rounded-full bg-white border border-emerald-200 flex items-center justify-center mx-auto shadow-sm">
               <span className="text-sm text-emerald-600 font-bold">❓</span>
             </div>
