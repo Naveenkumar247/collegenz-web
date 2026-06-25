@@ -40,7 +40,6 @@ export default function FeedPage() {
           ? backupToken.slice(1, -1) 
           : backupToken;
 
-        // 🟢 FIXED: Explicitly declare the Record layout type to avoid any undefined value traps
         const authHeaders: Record<string, string> = {};
         if (cleanToken) {
           authHeaders['Authorization'] = `Bearer ${cleanToken}`;
@@ -73,15 +72,18 @@ export default function FeedPage() {
     loadDataPools();
   }, [isMounted]);
 
-  if (!isMounted) return <div className="p-6 text-white text-xs font-mono">Connecting Gateway...</div>;
+  if (!isMounted) return <div className="p-6 text-slate-500 text-xs font-mono">Connecting Gateway...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white px-2 sm:px-4 py-4 font-sans">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+    // 🟢 Outer container set to a light theme background matching your exact desktop layout
+    <div className="min-h-screen bg-[#f3f4f6] text-slate-900 px-2 sm:px-4 py-4 font-sans">
+      
+      {/* 🛠️ CORE THREE-COLUMN GRID MATRIX */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5">
 
-        {/* COLUMN 1: LEFT SIDEBAR NAVIGATION */}
-        <aside className="hidden lg:block lg:col-span-3 space-y-2 sticky top-4 h-fit">
-          <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 space-y-1">
+        {/* ================= COLUMN 1: LEFT SIDEBAR NAVIGATION ================= */}
+        <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-3 space-y-0.5 shadow-sm">
             {[
               { label: 'Home', icon: '🏠', active: true },
               { label: 'Community Hubs', icon: '👥' },
@@ -94,44 +96,48 @@ export default function FeedPage() {
             ].map((nav) => (
               <button
                 key={nav.label}
-                className={`w-full flex items-center space-x-3 px-4 py-2.5 text-xs font-medium rounded-xl transition-all border-0 text-left ${
+                className={`w-full flex items-center space-x-3 px-4 py-2 text-xs font-medium rounded-xl transition-all border-0 text-left ${
                   nav.active 
-                    ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400' 
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 bg-transparent'
+                    ? 'bg-emerald-50 text-emerald-600 font-semibold' 
+                    : 'text-slate-600 hover:bg-slate-50 bg-transparent'
                 }`}
               >
-                <span className="text-sm">{nav.icon}</span>
+                <span className="text-sm opacity-80">{nav.icon}</span>
                 <span>{nav.label}</span>
               </button>
             ))}
           </div>
         </aside>
 
-        {/* COLUMN 2: CENTER MAIN STREAM FEED CONTENT */}
-        <main className="col-span-1 lg:col-span-6 space-y-5">
+
+        {/* ================= COLUMN 2: CENTER MAIN STREAM FEED CONTENT ================= */}
+        <main className="col-span-1 lg:col-span-6 space-y-4">
           
+          {/* 🌟 Horizontal Featured Card Slider Block */}
           {featuredPosts.length > 0 && (
-            <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 p-4 rounded-2xl space-y-3 backdrop-blur-md">
-              <h2 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 tracking-wide px-1">
+            <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-800 tracking-wide">
                 Featured Post
               </h2>
               
-              <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-none snap-x overflow-y-hidden">
+              <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none snap-x overflow-y-hidden">
                 {featuredPosts.map((feat: any) => (
                   <div 
                     key={feat._id} 
-                    className="flex-shrink-0 w-28 h-44 sm:w-36 sm:h-56 rounded-xl relative overflow-hidden snap-start group border border-slate-200 dark:border-white/10 bg-cover bg-center shadow-sm"
+                    className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm"
                     style={{ backgroundImage: `url(${feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/30" />
+                    {/* Shadow overlay matching the desktop mockup cards */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     
-                    <div className="absolute top-1.5 left-1.5 flex items-center space-x-1 bg-black/40 backdrop-blur-md py-0.5 px-1.5 rounded-full border border-white/5 max-w-[90%]">
-                      <img src={feat.author.picture} alt="" className="w-3 h-3 rounded-full object-cover" />
-                      <span className="text-[8px] text-slate-300 truncate">{feat.author.username}</span>
+                    {/* User identifier tag info layout element */}
+                    <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/20 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10 max-w-[90%]">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20" />
+                      <span className="text-[8px] text-white font-medium truncate">User</span>
                     </div>
 
                     <div className="absolute bottom-2 inset-x-2">
-                      <p className="text-[9px] sm:text-[10px] text-white font-medium line-clamp-2 leading-relaxed">
+                      <p className="text-[9px] sm:text-[10px] text-white font-semibold line-clamp-2 leading-snug">
                         {feat.caption}
                       </p>
                     </div>
@@ -141,11 +147,12 @@ export default function FeedPage() {
             </div>
           )}
 
+          {/* Vertical Post Render Feed Stack Loop */}
           <div className="space-y-4">
             {feedLoading ? (
               <div className="text-center py-12 text-xs text-slate-400 animate-pulse">Assembling content stream...</div>
             ) : posts.length === 0 ? (
-              <div className="text-center py-10 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 text-xs">
+              <div className="text-center py-10 bg-white border border-slate-200 rounded-xl text-slate-400 text-xs">
                 No recent feed content found.
               </div>
             ) : (
@@ -154,17 +161,18 @@ export default function FeedPage() {
           </div>
         </main>
 
-        {/* COLUMN 3: RIGHT SIDEBAR WIDGET PANEL */}
+
+        {/* ================= COLUMN 3: RIGHT SIDEBAR WIDGET PANEL ================= */}
         <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
-          <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 p-5 rounded-2xl text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto shadow-sm">
-              <span className="text-lg text-emerald-500 font-bold">❓</span>
+          <div className="bg-[#eefbf4] border border-emerald-100 p-5 rounded-2xl text-center space-y-3 shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-white border border-emerald-200 flex items-center justify-center mx-auto shadow-sm">
+              <span className="text-sm text-emerald-600 font-bold">❓</span>
             </div>
             <div className="space-y-1">
-              <h3 className="text-xs font-bold text-emerald-800 dark:text-emerald-400">
+              <h3 className="text-xs font-bold text-emerald-800">
                 Do you know what is going on?
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed px-1">
+              <p className="text-[11px] text-emerald-700/80 leading-relaxed px-1">
                 Connect globally with college networks, trace ongoing placement seasons, and trade info metrics seamlessly.
               </p>
             </div>
