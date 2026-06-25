@@ -14,7 +14,6 @@ export default function ProfilePage() {
   const [userData, setUserData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('grid');
   
-  // Ref to prevent double-fetching on React StrictMode dual-mount runs
   const hasFetched = useRef(false);
 
   useEffect(() => {
@@ -23,6 +22,21 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!isMounted) return;
+
+    // 🟢 NEW: Extract token directly from URL parameters if arriving from Google OAuth
+    let incomingToken = null;
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      incomingToken = urlParams.get('token');
+      
+      if (incomingToken) {
+        // Save it right away so subsequent pages stay authorized
+        localStorage.setItem('token', incomingToken);
+        
+        // Clean up the address bar so the messy token isn't visible in the URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
 
     const fetchUserProfile = async (token: string) => {
       if (hasFetched.current) return;
@@ -41,7 +55,6 @@ export default function ProfilePage() {
           const data = await response.json();
           setUserData(data);
         } else if (response.status === 401) {
-          // Token expired or dropped by database cluster validation flushes
           localStorage.removeItem('token');
           sessionStorage.setItem('authRedirectTarget', '/profile');
           router.push('/login');
@@ -53,11 +66,11 @@ export default function ProfilePage() {
       }
     };
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    // Prioritize the freshly intercepted URL token, fall back to localStorage
+    const token = incomingToken || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
     const cleanToken = token?.startsWith('"') && token?.endsWith('"') ? token.slice(1, -1) : token;
 
     if (cleanToken) {
-      // Safely sync Zustand state without triggering state dependency render loops
       if (!isAuthenticated && setToken) {
         setToken(cleanToken);
       }
@@ -68,7 +81,7 @@ export default function ProfilePage() {
       }
       router.push('/login');
     }
-  }, [isMounted, router]); // 🟢 FIXED: Stripped volatile reactive store variables from dependency matrix to eliminate infinite loops
+  }, [isMounted, router]);
 
   if (!isMounted || checkingAuth) {
     return (
@@ -78,9 +91,8 @@ export default function ProfilePage() {
     );
   }
 
-  // Fallback defaults mapping to your mockup criteria layout bounds
   const profileName = userData?.name || 'Naveen kumar';
-  const profileRole = userData?.zrole || 'admin';
+  const profileRole = userData?.zrole || 'user';
   const accountType = userData?.accountType || 'Public Account';
   const bioText = userData?.bio || 'Developer of the CollegenZ';
   const avatarUrl = userData?.picture || 'https://collegenz.in/uploads/profilepic.jpg';
@@ -92,7 +104,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans relative pb-16">
       
-      {/* 🟢 TOP ACCENT HEADER BLOCK */}
+      {/* TOP ACCENT HEADER BLOCK */}
       <div className="bg-emerald-700 h-28 w-full relative px-4 pt-4 flex items-start justify-between">
         <button 
           onClick={() => router.push('/feed')}
@@ -101,7 +113,7 @@ export default function ProfilePage() {
           ←
         </button>
         <div className="bg-emerald-800/60 border border-emerald-600 text-white text-[10px] px-3 py-1 rounded-full font-medium tracking-wide capitalize">
-          {accountType.replace('Account', '').trim()}
+          Public
         </div>
       </div>
 
@@ -121,27 +133,25 @@ export default function ProfilePage() {
 
       {/* MAIN IDENTITY DATA METRICS BLOCK */}
       <div className="px-5 space-y-4">
-        
-        {/* Name and Title Metadata */}
         <div className="flex justify-between items-start">
           <div className="space-y-0.5">
             <h1 className="text-lg font-bold text-slate-900 leading-tight capitalize">{profileName}</h1>
             <p className="text-xs text-slate-500 font-medium">
-              Public Account | <span className="text-slate-400 font-mono text-[11px] uppercase">{profileRole}</span>
+              {accountType} | <span className="text-slate-400 font-mono text-[11px] uppercase">{profileRole}</span>
             </p>
             <p className="text-xs text-slate-600 font-normal pt-1">{bioText}</p>
           </div>
           
           <button 
             onClick={() => router.push('/profile/edit')}
-            className="bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1 cursor-pointer focus:outline-none"
+            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1 cursor-pointer"
           >
             <span>📝</span>
             <span>Edit</span>
           </button>
         </div>
 
-        {/* 📊 NUMERICAL ENGAGEMENT MATRIX ROW */}
+        {/* NUMERICAL ENGAGEMENT MATRIX ROW */}
         <div className="grid grid-cols-3 gap-2 py-2 text-center border-t border-b border-slate-100">
           <div>
             <p className="text-sm font-bold text-slate-900">{followersCount}</p>
@@ -157,7 +167,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* 🗂️ ICON TAB SEGMENTATION HEADER */}
+        {/* ICON TAB SEGMENTATION HEADER */}
         <div className="flex justify-around items-center pt-1 border-b border-slate-100">
           {[
             { id: 'grid', icon: '🎰' },
@@ -169,7 +179,7 @@ export default function ProfilePage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`pb-3 text-lg bg-transparent border-0 cursor-pointer transition-all border-b-2 px-4 focus:outline-none ${
+              className={`pb-3 text-lg bg-transparent border-0 cursor-pointer transition-all border-b-2 px-4 ${
                 activeTab === tab.id 
                   ? 'border-emerald-600 filter-none opacity-100' 
                   : 'border-transparent opacity-40 hover:opacity-70'
@@ -183,7 +193,7 @@ export default function ProfilePage() {
         {/* LOWER GRID LAYOUT PORTFOLIO FEED */}
         <div className="pt-2">
           {activeTab === 'grid' ? (
-            <div className="grid grid-cols-1 gap-4 transition-all duration-300">
+            <div className="grid grid-cols-1 gap-4">
               <div className="w-full max-w-[280px] p-2 rounded-xl bg-white border border-slate-100 shadow-sm">
                 <img 
                   src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Vodafone_Idea_Logo.svg/1200px-Vodafone_Idea_Logo.svg.png" 
