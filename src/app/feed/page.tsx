@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import PostCard from '@/components/feed/PostCard';
+// 🟢 FIXED: Changed the import path to hit your actual local file directly
+import PostCard from './PostCard'; 
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
@@ -177,7 +178,6 @@ export default function FeedPage() {
                     No recent feed content found.
                   </div>
                 ) : (
-                  // 🟢 FIXED: Safe conversion wrapper to cleanly allow prop transfers bypassing casing/path locks
                   posts.map((item: any) => {
                     const CardComponent = PostCard as any;
                     return (
