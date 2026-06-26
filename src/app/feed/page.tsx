@@ -52,8 +52,8 @@ export default function FeedPage() {
           authHeaders['Authorization'] = `Bearer ${cleanToken}`;
         }
 
-        // 1. Fetch Featured Panel Cards (Updated to active mapped endpoint)
-        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/posts/featured', {
+        // 1. Fetch Featured Panel Cards (🟢 FIXED: Added /v1/ back into the URL)
+        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/featured', {
           headers: authHeaders
         });
         if (featuredRes.ok) {
@@ -61,8 +61,8 @@ export default function FeedPage() {
           setFeaturedPosts(Array.isArray(featuredData) ? featuredData : []);
         }
 
-        // 2. Fetch General Scroll Feed Posts (Updated to active mapped endpoint)
-        const feedRes = await window.fetch('https://collegenz-api.onrender.com/api/posts/feed', {
+        // 2. Fetch General Scroll Feed Posts (🟢 FIXED: Added /v1/ back into the URL)
+        const feedRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/feed', {
           headers: authHeaders
         });
         if (feedRes.ok) {
@@ -198,3 +198,4 @@ export default function FeedPage() {
     </div>
   );
 }
+
