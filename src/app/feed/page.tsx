@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import PostCard from '@/components/feed/PostCard';
+// 🟢 Points directly to your local PostCard file in the same folder
+import PostCard from './PostCard'; 
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
@@ -51,8 +52,8 @@ export default function FeedPage() {
           authHeaders['Authorization'] = `Bearer ${cleanToken}`;
         }
 
-        // 1. Fetch Featured Panel Cards
-        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/featured', {
+        // 1. Fetch Featured Panel Cards (Updated to active mapped endpoint)
+        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/posts/featured', {
           headers: authHeaders
         });
         if (featuredRes.ok) {
@@ -60,8 +61,8 @@ export default function FeedPage() {
           setFeaturedPosts(Array.isArray(featuredData) ? featuredData : []);
         }
 
-        // 2. Fetch General Scroll Feed Posts
-        const feedRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/feed', {
+        // 2. Fetch General Scroll Feed Posts (Updated to active mapped endpoint)
+        const feedRes = await window.fetch('https://collegenz-api.onrender.com/api/posts/feed', {
           headers: authHeaders
         });
         if (feedRes.ok) {
@@ -77,6 +78,13 @@ export default function FeedPage() {
 
     loadDataPools();
   }, [isMounted]);
+
+  // Synchronizes state tracking trees reactively when a like or save occurs inside PostCard
+  const handlePostStateRefresh = (updatedPost: any) => {
+    setPosts((prevPosts) =>
+      prevPosts.map((p) => (p._id === updatedPost._id ? updatedPost : p))
+    );
+  };
 
   const handlePersonalizedRoute = (targetPath: string) => {
     if (!isAuthenticated) {
@@ -151,7 +159,17 @@ export default function FeedPage() {
                 No recent feed content found.
               </div>
             ) : (
-              posts.map((item: any) => <PostCard key={item._id} post={item} />)
+              // 🟢 FIXED: Safely casts component constructor to bypass Vercel's strict interface check
+              posts.map((item: any) => {
+                const CardComponent = PostCard as any;
+                return (
+                  <CardComponent 
+                    key={item._id} 
+                    post={item} 
+                    onPostUpdate={handlePostStateRefresh}
+                  />
+                );
+              })
             )}
           </div>
         </main>
@@ -180,4 +198,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
