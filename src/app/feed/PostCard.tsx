@@ -14,7 +14,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
   const [isLiking, setIsLiking] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Safely extract images array out of schema permutations (string, array of strings, or object arrays)
+  // Safely extract images array out of schema permutations
   const images: string[] = Array.isArray(post.images) 
     ? post.images 
     : post.image || post.postMedia 
@@ -24,7 +24,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const cleanToken = token?.startsWith('"') && token?.endsWith('"') ? token.slice(1, -1) : token;
 
-  // 1. Handle Like Toggle Event
+  // 1. Handle Like Toggle Event (Updates Post AND User records on the backend)
   const handleLike = async () => {
     if (!isAuthenticated || isLiking) return;
     setIsLiking(true);
@@ -38,6 +38,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
       });
       if (res.ok) {
         const updatedPost = await res.json();
+        // Dispatches the backend's synchronized post state straight back to the main layout context
         if (onPostUpdate) onPostUpdate(updatedPost);
       }
     } catch (err) {
@@ -47,7 +48,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
     }
   };
 
-  // 2. Handle Bookmark Save Toggle Event
+  // 2. Handle Bookmark Save Toggle Event (Updates Post AND User records on the backend)
   const handleSave = async () => {
     if (!isAuthenticated || isSaving) return;
     setIsSaving(true);
@@ -70,7 +71,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
     }
   };
 
-  // 3. Handle Share Event Using Web Share API API native layers
+  // 3. Handle Share Event Using Web Share API
   const handleShare = async () => {
     const postUrl = `${window.location.origin}/posts/${post._id}`;
     if (navigator.share) {
@@ -84,7 +85,6 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
         console.log('Share canceled or dismissed');
       }
     } else {
-      // Fallback: Copy link text string directly to user device clipboard
       navigator.clipboard.writeText(postUrl);
       alert('Post link copied to clipboard!');
     }
@@ -121,18 +121,16 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
         <span className="text-slate-400 font-bold cursor-pointer hover:text-slate-600 px-1">•••</span>
       </div>
 
-      {/* 🟢 MULTI-IMAGE SLIDING CAROUSEL CORE COMPONENT WRAPPER */}
+      {/* MULTI-IMAGE SLIDING CAROUSEL CORE COMPONENT WRAPPER */}
       {images.length > 0 && (
         <div className="w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-100 relative group aspect-square sm:max-h-96 flex items-center justify-center">
           
-          {/* Active Image Render */}
           <img 
             src={images[currentImageIndex]} 
             alt={`Slide ${currentImageIndex + 1}`} 
             className="w-full h-full object-contain select-none"
           />
 
-          {/* Carousel Control Arrows (Only visible if multi-image array targets exist) */}
           {images.length > 1 && (
             <>
               <button 
@@ -148,7 +146,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
                 ›
               </button>
 
-              {/* Instagram Style Slider Indicator Dots Row */}
+              {/* Slider Indicator Dots Row */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10 bg-black/20 backdrop-blur-xs px-2 py-1 rounded-full">
                 {images.map((_, idx) => (
                   <div 
@@ -167,21 +165,21 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
         {post.content || post.caption || post.text}
       </p>
       
-      {/* 🟢 INTERACTIVE ACTION BUTTON FOOTER ROW */}
+      {/* INTERACTIVE ACTION BUTTON FOOTER ROW */}
       <div className="flex items-center justify-between pt-2 border-t border-slate-50 text-[11px] font-semibold text-slate-400 px-0.5">
         <div className="flex items-center space-x-4">
           
-          {/* Like Button Trigger element */}
+          {/* Like Button Trigger (🟢 Updated to read normalized backend state parameters) */}
           <button 
             onClick={handleLike}
             disabled={!isAuthenticated}
             className={`flex items-center space-x-1 focus:outline-none transition-colors ${post.isLikedByCurrentUser ? 'text-rose-500' : 'hover:text-slate-600'}`}
           >
             <span className="text-sm">{post.isLikedByCurrentUser ? '❤️' : '♡'}</span>
-            <span>{post.likesCount || post.likes?.length || 0}</span>
+            <span>{post.likesCount ?? post.likes?.length ?? 0}</span>
           </button>
 
-          {/* Share Action trigger */}
+          {/* Share Action Trigger */}
           <button 
             onClick={handleShare}
             className="flex items-center space-x-1 hover:text-slate-600 focus:outline-none"
@@ -191,7 +189,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
           </button>
         </div>
 
-        {/* Bookmark Save Action trigger */}
+        {/* Bookmark Save Action Trigger (🟢 Updated to read normalized backend state parameters) */}
         <button 
           onClick={handleSave}
           disabled={!isAuthenticated}
