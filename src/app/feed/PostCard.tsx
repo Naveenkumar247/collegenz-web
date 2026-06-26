@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 
+// 🟢 FIXED: Explicitly added onPostUpdate to the interface type parameters
 interface PostCardProps {
   post: any;
   onPostUpdate?: (updatedPost: any) => void;
@@ -24,7 +25,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const cleanToken = token?.startsWith('"') && token?.endsWith('"') ? token.slice(1, -1) : token;
 
-  // 1. Handle Like Toggle Event (Updates Post AND User records on the backend)
+  // 1. Handle Like Toggle Event
   const handleLike = async () => {
     if (!isAuthenticated || isLiking) return;
     setIsLiking(true);
@@ -38,7 +39,6 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
       });
       if (res.ok) {
         const updatedPost = await res.json();
-        // Dispatches the backend's synchronized post state straight back to the main layout context
         if (onPostUpdate) onPostUpdate(updatedPost);
       }
     } catch (err) {
@@ -48,7 +48,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
     }
   };
 
-  // 2. Handle Bookmark Save Toggle Event (Updates Post AND User records on the backend)
+  // 2. Handle Bookmark Save Toggle Event
   const handleSave = async () => {
     if (!isAuthenticated || isSaving) return;
     setIsSaving(true);
@@ -71,7 +71,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
     }
   };
 
-  // 3. Handle Share Event Using Web Share API
+  // 3. Handle Share Event
   const handleShare = async () => {
     const postUrl = `${window.location.origin}/posts/${post._id}`;
     if (navigator.share) {
@@ -82,7 +82,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
           url: postUrl,
         });
       } catch (err) {
-        console.log('Share canceled or dismissed');
+        console.log('Share canceled');
       }
     } else {
       navigator.clipboard.writeText(postUrl);
@@ -103,7 +103,7 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
 
   return (
     <article className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4 shadow-sm">
-      {/* Post Owner Header Metadata */}
+      {/* Post Header Metadata */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <img 
@@ -124,7 +124,6 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
       {/* MULTI-IMAGE SLIDING CAROUSEL CORE COMPONENT WRAPPER */}
       {images.length > 0 && (
         <div className="w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-100 relative group aspect-square sm:max-h-96 flex items-center justify-center">
-          
           <img 
             src={images[currentImageIndex]} 
             alt={`Slide ${currentImageIndex + 1}`} 
@@ -168,8 +167,6 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
       {/* INTERACTIVE ACTION BUTTON FOOTER ROW */}
       <div className="flex items-center justify-between pt-2 border-t border-slate-50 text-[11px] font-semibold text-slate-400 px-0.5">
         <div className="flex items-center space-x-4">
-          
-          {/* Like Button Trigger (🟢 Updated to read normalized backend state parameters) */}
           <button 
             onClick={handleLike}
             disabled={!isAuthenticated}
@@ -179,7 +176,6 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
             <span>{post.likesCount ?? post.likes?.length ?? 0}</span>
           </button>
 
-          {/* Share Action Trigger */}
           <button 
             onClick={handleShare}
             className="flex items-center space-x-1 hover:text-slate-600 focus:outline-none"
@@ -189,14 +185,13 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
           </button>
         </div>
 
-        {/* Bookmark Save Action Trigger (🟢 Updated to read normalized backend state parameters) */}
         <button 
           onClick={handleSave}
           disabled={!isAuthenticated}
           className={`flex items-center space-x-1 focus:outline-none transition-colors ${post.isSavedByCurrentUser ? 'text-amber-500' : 'hover:text-slate-600'}`}
         >
           <span className="text-sm">{post.isSavedByCurrentUser ? '🔖' : '🗂️'}</span>
-          <span>{post.isSavedByCurrentUser ? 'Saved' : 'Save'}</span>
+          <span>{post.savesCount ?? post.savedBy?.length ?? 0}</span>
         </button>
       </div>
     </article>
