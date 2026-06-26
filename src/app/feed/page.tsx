@@ -25,20 +25,22 @@ export default function FeedPage() {
       if (hasFetched.current) return;
       hasFetched.current = true;
 
-      // Cleaned up local fallback image references to prevent broken links
       const fallbackPosts = [
         {
           id: 'default-1',
           authorName: 'naveenkumar247',
-          avatarUrl: 'https://collegenz-web.vercel.app/login', // Fallback placeholder
+          avatarUrl: 'https://collegenz.in/uploads/profilepic.jpg',
           dateString: '4/21/2026',
-          postMedia: 'https://upload.wikimedia.org/wikipedia/commons/c/cd/Vodafone_Idea_Logo.svg',
+          postMedia: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Vodafone_Idea_Logo.svg/1200px-Vodafone_Idea_Logo.svg.png',
           textContent: 'Vodafone Idea Limited (Vi) is one of India\'s leading telecom providers, delivering reliable mobile connectivity, high-speed internet, and digital services to millions of users across the country.'
         }
       ];
 
       try {
-        // 🟢 Change this URL path string if your backend uses a different endpoint route name
+        console.log('📡 Fetching feed from backend with token:', token ? 'Token Exists' : 'No Token');
+        
+        // 🟢 PATH DIRECTORY FIXES:
+        // Try changing '/api/v1/posts' to your exact backend route name if it is different (e.g., '/api/v1/feed')
         const response = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts', {
           method: 'GET',
           headers: {
@@ -46,11 +48,23 @@ export default function FeedPage() {
             'Content-Type': 'application/json'
           }
         });
+
+        console.log('📊 Backend response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
-          // Normalize your backend database entries dynamically
-          const normalizedPosts = (Array.isArray(data) ? data : data.posts || []).map((p: any) => ({
+          console.log('📦 Raw data payload received from backend:', data);
+
+          // Map either an array directly or a nested property layout
+          const rawPostsArray = Array.isArray(data) ? data : (data.posts || data.data || []);
+          
+          if (rawPostsArray.length === 0) {
+            console.warn('⚠️ Backend returned an empty posts array. Showing fallback.');
+            setPosts(fallbackPosts);
+            return;
+          }
+
+          const normalizedPosts = rawPostsArray.map((p: any) => ({
             id: p._id || p.id,
             authorName: p.author?.name || p.username || p.author || 'Anonymous Student',
             avatarUrl: p.author?.picture || p.avatar || 'https://collegenz.in/uploads/profilepic.jpg',
@@ -59,17 +73,25 @@ export default function FeedPage() {
             textContent: p.content || p.text || p.textContent || ''
           }));
 
-          setPosts(normalizedPosts.length > 0 ? normalizedPosts : fallbackPosts);
+          setPosts(normalizedPosts);
         } else {
-          setPosts(fallbackPosts);
+          console.error('❌ Server error response:', await response.text());
+          if (response.status === 401) {
+            localStorage.removeItem('token');
+            sessionStorage.setItem('authRedirectTarget', '/feed');
+            router.push('/login');
+          } else {
+            setPosts(fallbackPosts);
+          }
         }
       } catch (err) {
-        console.error('Failed to compile feed metrics stream:', err);
+        console.error('🚨 Network connection failure hitting backend endpoint:', err);
         setPosts(fallbackPosts);
       } finally {
         setLoadingFeed(false);
       }
     };
+    
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const cleanToken = token?.startsWith('"') && token?.endsWith('"') ? token.slice(1, -1) : token;
