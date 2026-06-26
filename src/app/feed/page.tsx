@@ -70,7 +70,7 @@ export default function FeedPage() {
         }
       } catch (err) {
         console.error('Data pool connection failed:', err);
-      } finaly {
+      } finally {
         setFeedLoading(false);
       }
     };
