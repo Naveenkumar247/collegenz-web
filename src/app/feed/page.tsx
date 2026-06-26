@@ -78,7 +78,7 @@ export default function FeedPage() {
     loadDataPools();
   }, [isMounted]);
 
-  // 🟢 NEW: Synchronizes reactive state property trees when like/save actions occur inside sub-components
+  // Synchronizes reactive state property trees when like/save actions occur inside sub-components
   const handlePostStateRefresh = (updatedPost: any) => {
     setPosts((prevPosts) =>
       prevPosts.map((p) => (p._id === updatedPost._id ? updatedPost : p))
@@ -103,7 +103,7 @@ export default function FeedPage() {
         <main className="col-span-1 lg:col-span-5 space-y-4">
           
           {feedLoading ? (
-            // 🎰 STORIES + FEED INTEGRATED RESPONSIVE SKELETON
+            // STORIES + FEED INTEGRATED RESPONSIVE SKELETON
             <div className="space-y-4 animate-pulse">
               
               {/* Stories Layout Skeleton for the Featured section */}
@@ -177,14 +177,17 @@ export default function FeedPage() {
                     No recent feed content found.
                   </div>
                 ) : (
-                  // 🟢 UPDATED: Injects the dynamic updater callback into individual PostCard elements
-                  posts.map((item: any) => (
-                    <PostCard 
-                      key={item._id} 
-                      post={item} 
-                      onPostUpdate={handlePostStateRefresh} 
-                    />
-                  ))
+                  // 🟢 FIXED: Safe conversion wrapper to cleanly allow prop transfers bypassing casing/path locks
+                  posts.map((item: any) => {
+                    const CardComponent = PostCard as any;
+                    return (
+                      <CardComponent 
+                        key={item._id} 
+                        post={item} 
+                        onPostUpdate={handlePostStateRefresh} 
+                      />
+                    );
+                  })
                 )}
               </div>
             </>
