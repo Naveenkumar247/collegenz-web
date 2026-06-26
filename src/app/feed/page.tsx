@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-// 🟢 Uses the local path relative file import
-import PostCard from './PostCard'; 
+import PostCard from '@/components/feed/PostCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
@@ -79,13 +78,6 @@ export default function FeedPage() {
     loadDataPools();
   }, [isMounted]);
 
-  // 🟢 Synchronizes state tracking trees reactively when a like or save occurs inside PostCard
-  const handlePostStateRefresh = (updatedPost: any) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((p) => (p._id === updatedPost._id ? updatedPost : p))
-    );
-  };
-
   const handlePersonalizedRoute = (targetPath: string) => {
     if (!isAuthenticated) {
       router.push(`/login?redirectTo=${encodeURIComponent(targetPath)}`);
@@ -159,17 +151,7 @@ export default function FeedPage() {
                 No recent feed content found.
               </div>
             ) : (
-              // 🟢 FIXED: Safely casts to any component instance to clear Vercel's strict interface check
-              posts.map((item: any) => {
-                const CardComponent = PostCard as any;
-                return (
-                  <CardComponent 
-                    key={item._id} 
-                    post={item} 
-                    onPostUpdate={handlePostStateRefresh}
-                  />
-                );
-              })
+              posts.map((item: any) => <PostCard key={item._id} post={item} />)
             )}
           </div>
         </main>
@@ -198,3 +180,6 @@ export default function FeedPage() {
     </div>
   );
 }
+
+
+Refer this old working code
