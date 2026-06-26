@@ -8,7 +8,6 @@ export default function FeedPage() {
   const { isAuthenticated, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
   
-  // Layout states
   const [isMounted, setIsMounted] = useState(false);
   const [loadingFeed, setLoadingFeed] = useState(true);
   const [posts, setPosts] = useState<any[]>([]);
@@ -26,19 +25,20 @@ export default function FeedPage() {
       if (hasFetched.current) return;
       hasFetched.current = true;
 
-      // 🟢 Hardcoded fallbacks to display your actual content instantly if the API fails
+      // Cleaned up local fallback image references to prevent broken links
       const fallbackPosts = [
         {
-          id: '1',
-          author: 'naveenkumar247',
-          avatar: 'https://collegenz.in/uploads/profilepic.jpg',
-          date: '4/21/2026',
-          image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Vodafone_Idea_Logo.svg/1200px-Vodafone_Idea_Logo.svg.png',
-          content: 'Vodafone Idea Limited (Vi) is one of India\'s leading telecom providers, delivering reliable mobile connectivity, high-speed internet, and digital services to millions of users across the country.'
+          id: 'default-1',
+          authorName: 'naveenkumar247',
+          avatarUrl: 'https://collegenz-web.vercel.app/login', // Fallback placeholder
+          dateString: '4/21/2026',
+          postMedia: 'https://upload.wikimedia.org/wikipedia/commons/c/cd/Vodafone_Idea_Logo.svg',
+          textContent: 'Vodafone Idea Limited (Vi) is one of India\'s leading telecom providers, delivering reliable mobile connectivity, high-speed internet, and digital services to millions of users across the country.'
         }
       ];
 
       try {
+        // 🟢 Change this URL path string if your backend uses a different endpoint route name
         const response = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts', {
           method: 'GET',
           headers: {
@@ -49,15 +49,23 @@ export default function FeedPage() {
         
         if (response.ok) {
           const data = await response.json();
-          // If the backend returned an empty array, use our verified mockup item
-          const finalPosts = data && data.length > 0 ? data : fallbackPosts;
-          setPosts(finalPosts);
+          // Normalize your backend database entries dynamically
+          const normalizedPosts = (Array.isArray(data) ? data : data.posts || []).map((p: any) => ({
+            id: p._id || p.id,
+            authorName: p.author?.name || p.username || p.author || 'Anonymous Student',
+            avatarUrl: p.author?.picture || p.avatar || 'https://collegenz.in/uploads/profilepic.jpg',
+            dateString: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : p.date || 'Recently',
+            postMedia: p.image || p.imageUrl || p.mediaUrl || null,
+            textContent: p.content || p.text || p.textContent || ''
+          }));
+
+          setPosts(normalizedPosts.length > 0 ? normalizedPosts : fallbackPosts);
         } else {
           setPosts(fallbackPosts);
         }
       } catch (err) {
         console.error('Failed to compile feed metrics stream:', err);
-        setPosts(fallbackPosts); // Ensure UI displays posts on failure
+        setPosts(fallbackPosts);
       } finally {
         setLoadingFeed(false);
       }
@@ -79,24 +87,20 @@ export default function FeedPage() {
     }
   }, [isMounted, router]);
 
-  // 🎰 1. SKELETON LOADER STATE (Cleaned up - NO extra nested header strings)
   if (!isMounted || loadingFeed) {
     return (
       <div className="max-w-[1200px] mx-auto flex gap-6 pt-4 px-4 animate-pulse pb-16">
-        {/* Sidebar Skeleton */}
-        <div className="hidden md:flex flex-col w-64 shrink-0 bg-white border border-slate-100 rounded-2xl p-4 space-y-4 h-fit shadow-xs">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="hidden md:flex flex-col w-64 shrink-0 bg-white border border-slate-100 rounded-2xl p-4 space-y-4 h-fit">
+          {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center space-x-3 py-1">
               <div className="h-4 w-4 bg-slate-200 rounded" />
               <div className="h-3 bg-slate-200 rounded w-24" />
             </div>
           ))}
         </div>
-        
-        {/* Main Feed Column Skeleton */}
         <div className="flex-1 max-w-2xl space-y-4 w-full mx-auto">
           {[1, 2].map((post) => (
-            <div key={post} className="bg-white border border-slate-100 rounded-2xl p-4 space-y-4 shadow-xs">
+            <div key={post} className="bg-white border border-slate-100 rounded-2xl p-4 space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="h-9 w-9 bg-slate-200 rounded-full" />
                 <div className="space-y-1.5 flex-1">
@@ -112,7 +116,6 @@ export default function FeedPage() {
     );
   }
 
-  // 🟢 2. REAL UI RENDER STATE (Merged smoothly with your layout configuration)
   return (
     <div className="max-w-[1200px] mx-auto flex gap-6 pt-4 px-4 pb-20 font-sans">
       
@@ -132,7 +135,7 @@ export default function FeedPage() {
       {/* CORE CONTENT MIDDLE COLUMN */}
       <main className="flex-1 max-w-2xl space-y-4 w-full mx-auto">
         
-        {/* FEATURED POST SLIDER BLOCK */}
+        {/* FEATURED POST SLIDER */}
         <section className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
           <h3 className="text-xs font-bold text-slate-800 tracking-tight">Featured Post</h3>
           <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none">
@@ -152,27 +155,45 @@ export default function FeedPage() {
           </div>
         </section>
 
-        {/* ACTIVE POST CARD ITERATOR */}
+        {/* ACTIVE POST CARD TIMELINE */}
         {posts.map((post) => (
           <article key={post.id} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4 shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <img src={post.avatar} alt={post.author} className="w-9 h-9 rounded-full object-cover border border-slate-100" />
+                {/* Avatar with Broken Image Fallback Handling */}
+                <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-100">
+                  <img 
+                    src={post.avatarUrl} 
+                    alt="" 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">{post.author}</h4>
-                  <p className="text-[10px] text-slate-400 font-medium">{post.date}</p>
+                  <h4 className="text-xs font-bold text-slate-900">{post.authorName}</h4>
+                  <p className="text-[10px] text-slate-400 font-medium">{post.dateString}</p>
                 </div>
               </div>
               <span className="text-slate-400 font-bold cursor-pointer">•••</span>
             </div>
             
-            {post.image && (
-              <div className="w-full bg-white rounded-xl overflow-hidden border border-slate-100 p-2 flex justify-center items-center">
-                <img src={post.image} alt="Post Attachment" className="max-w-full h-auto object-contain rounded-lg" />
+            {/* Post Attachment Media Image Handling */}
+            {post.postMedia && (
+              <div className="w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-100 p-2 flex justify-center items-center">
+                <img 
+                  src={post.postMedia} 
+                  alt="" 
+                  className="max-w-full h-auto max-h-72 object-contain rounded-lg" 
+                  onError={(e) => {
+                    // Hide parent containing wrapper elements if image link triggers an execution crash
+                    const parent = (e.target as HTMLImageElement).parentElement;
+                    if (parent) parent.style.display = 'none';
+                  }}
+                />
               </div>
             )}
 
-            <p className="text-xs text-slate-600 leading-relaxed font-normal whitespace-pre-wrap">{post.content}</p>
+            <p className="text-xs text-slate-600 leading-relaxed font-normal whitespace-pre-wrap">{post.textContent}</p>
             
             <div className="flex items-center space-x-4 pt-2 border-t border-slate-50 text-[11px] font-semibold text-slate-400">
               <button className="flex items-center space-x-1 hover:text-slate-600"><span>♡</span><span>1</span></button>
@@ -182,7 +203,7 @@ export default function FeedPage() {
         ))}
       </main>
 
-      {/* RIGHT SIDEBAR BANNER */}
+      {/* RIGHT SIDEBAR WIDGET */}
       <aside className="hidden lg:block w-72 shrink-0 bg-white border border-slate-200 rounded-2xl p-4 h-fit shadow-xs text-center space-y-2">
         <h4 className="text-xs font-bold text-emerald-700">Do you know what is going on?</h4>
         <p className="text-[10px] text-slate-400 leading-normal">Connect globally with college networks, trace ongoing placement seasons, and trade info metrics seamlessly.</p>
