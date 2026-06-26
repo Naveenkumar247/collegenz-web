@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 
-// 🟢 FIXED: Explicitly added onPostUpdate to the interface type parameters
+// 🟢 PERFECT DEFINITION AT THE CORRECT FILE PATH
 interface PostCardProps {
   post: any;
   onPostUpdate?: (updatedPost: any) => void;
@@ -15,7 +15,6 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
   const [isLiking, setIsLiking] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Safely extract images array out of schema permutations
   const images: string[] = Array.isArray(post.images) 
     ? post.images 
     : post.image || post.postMedia 
@@ -25,7 +24,6 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const cleanToken = token?.startsWith('"') && token?.endsWith('"') ? token.slice(1, -1) : token;
 
-  // 1. Handle Like Toggle Event
   const handleLike = async () => {
     if (!isAuthenticated || isLiking) return;
     setIsLiking(true);
@@ -42,13 +40,12 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
         if (onPostUpdate) onPostUpdate(updatedPost);
       }
     } catch (err) {
-      console.error('Like tracking synchronization failed:', err);
+      console.error('Like sync failed:', err);
     } finally {
       setIsLiking(false);
     }
   };
 
-  // 2. Handle Bookmark Save Toggle Event
   const handleSave = async () => {
     if (!isAuthenticated || isSaving) return;
     setIsSaving(true);
@@ -65,13 +62,12 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
         if (onPostUpdate) onPostUpdate(updatedPost);
       }
     } catch (err) {
-      console.error('Save tracking synchronization failed:', err);
+      console.error('Save sync failed:', err);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // 3. Handle Share Event
   const handleShare = async () => {
     const postUrl = `${window.location.origin}/posts/${post._id}`;
     if (navigator.share) {
@@ -86,11 +82,10 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
       }
     } else {
       navigator.clipboard.writeText(postUrl);
-      alert('Post link copied to clipboard!');
+      alert('Link copied to clipboard!');
     }
   };
 
-  // Carousel Navigation Helpers
   const nextImage = () => {
     if (images.length <= 1) return;
     setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
@@ -103,7 +98,6 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
 
   return (
     <article className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4 shadow-sm">
-      {/* Post Header Metadata */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <img 
@@ -121,37 +115,16 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
         <span className="text-slate-400 font-bold cursor-pointer hover:text-slate-600 px-1">•••</span>
       </div>
 
-      {/* MULTI-IMAGE SLIDING CAROUSEL CORE COMPONENT WRAPPER */}
       {images.length > 0 && (
-        <div className="w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-100 relative group aspect-square sm:max-h-96 flex items-center justify-center">
-          <img 
-            src={images[currentImageIndex]} 
-            alt={`Slide ${currentImageIndex + 1}`} 
-            className="w-full h-full object-contain select-none"
-          />
-
+        <div className="w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-100 relative group aspect-square flex items-center justify-center">
+          <img src={images[currentImageIndex]} alt="" className="w-full h-full object-contain select-none"/>
           {images.length > 1 && (
             <>
-              <button 
-                onClick={prevImage}
-                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none z-10"
-              >
-                ‹
-              </button>
-              <button 
-                onClick={nextImage}
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none z-10"
-              >
-                ›
-              </button>
-
-              {/* Slider Indicator Dots Row */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10 bg-black/20 backdrop-blur-xs px-2 py-1 rounded-full">
+              <button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10">‹</button>
+              <button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10">›</button>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10 bg-black/20 px-2 py-1 rounded-full">
                 {images.map((_, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`h-1.5 w-1.5 rounded-full transition-all ${currentImageIndex === idx ? 'bg-emerald-500 scale-110' : 'bg-white/60'}`}
-                  />
+                  <div key={idx} className={`h-1.5 w-1.5 rounded-full transition-all ${currentImageIndex === idx ? 'bg-emerald-500 scale-110' : 'bg-white/60'}`}/>
                 ))}
               </div>
             </>
@@ -159,39 +132,24 @@ export default function PostCard({ post, onPostUpdate }: PostCardProps) {
         </div>
       )}
 
-      {/* Post Text Description Box */}
-      <p className="text-xs text-slate-600 leading-relaxed font-normal whitespace-pre-wrap px-0.5">
+      <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">
         {post.content || post.caption || post.text}
       </p>
       
-      {/* INTERACTIVE ACTION BUTTON FOOTER ROW */}
-      <div className="flex items-center justify-between pt-2 border-t border-slate-50 text-[11px] font-semibold text-slate-400 px-0.5">
+      <div className="flex items-center justify-between pt-2 border-t border-slate-50 text-[11px] font-semibold text-slate-400">
         <div className="flex items-center space-x-4">
-          <button 
-            onClick={handleLike}
-            disabled={!isAuthenticated}
-            className={`flex items-center space-x-1 focus:outline-none transition-colors ${post.isLikedByCurrentUser ? 'text-rose-500' : 'hover:text-slate-600'}`}
-          >
+          <button onClick={handleLike} disabled={!isAuthenticated} className={`flex items-center space-x-1 focus:outline-none ${post.isLikedByCurrentUser ? 'text-rose-500' : ''}`}>
             <span className="text-sm">{post.isLikedByCurrentUser ? '❤️' : '♡'}</span>
-            <span>{post.likesCount ?? post.likes?.length ?? 0}</span>
+            <span>{post.likesCount ?? 0}</span>
           </button>
-
-          <button 
-            onClick={handleShare}
-            className="flex items-center space-x-1 hover:text-slate-600 focus:outline-none"
-          >
+          <button onClick={handleShare} className="flex items-center space-x-1 hover:text-slate-600">
             <span className="text-sm">💬</span>
             <span>Share</span>
           </button>
         </div>
-
-        <button 
-          onClick={handleSave}
-          disabled={!isAuthenticated}
-          className={`flex items-center space-x-1 focus:outline-none transition-colors ${post.isSavedByCurrentUser ? 'text-amber-500' : 'hover:text-slate-600'}`}
-        >
+        <button onClick={handleSave} disabled={!isAuthenticated} className={`flex items-center space-x-1 focus:outline-none ${post.isSavedByCurrentUser ? 'text-amber-500' : ''}`}>
           <span className="text-sm">{post.isSavedByCurrentUser ? '🔖' : '🗂️'}</span>
-          <span>{post.savesCount ?? post.savedBy?.length ?? 0}</span>
+          <span>{post.savesCount ?? 0}</span>
         </button>
       </div>
     </article>
