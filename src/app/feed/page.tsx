@@ -1,23 +1,27 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import PostCard from '@/components/feed/PostCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
 export default function FeedPage() {
-  const { isAuthenticated, isLoading, setToken } = useAuthStore((state: any) => state);
+  const { isAuthenticated, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
+  
+  // Layout States
   const [posts, setPosts] = useState<any[]>([]);
   const [featuredPosts, setFeaturedPosts] = useState<any[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  
+  const hasFetched = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // 🟢 ROUTING UPGRADE: Handles backup token syncing without auto-forcing /login instantly
+  // Sync token back up from storage securely to state trees
   useEffect(() => {
     if (!isMounted) return;
     const backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -32,7 +36,10 @@ export default function FeedPage() {
     if (!isMounted) return;
 
     const loadDataPools = async () => {
+      if (hasFetched.current) return;
+      hasFetched.current = true;
       setFeedLoading(true);
+      
       try {
         let backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const cleanToken = backupToken?.startsWith('"') && backupToken?.endsWith('"') 
@@ -63,7 +70,7 @@ export default function FeedPage() {
         }
       } catch (err) {
         console.error('Data pool connection failed:', err);
-      } finally {
+      } finaly {
         setFeedLoading(false);
       }
     };
@@ -71,10 +78,8 @@ export default function FeedPage() {
     loadDataPools();
   }, [isMounted]);
 
-  // 🟢 ROUTING UPGRADE: Guard utility helper for handling personalized views or actions
   const handlePersonalizedRoute = (targetPath: string) => {
     if (!isAuthenticated) {
-      // Intercepts user and appends target redirect path tracking parameter
       router.push(`/login?redirectTo=${encodeURIComponent(targetPath)}`);
     } else {
       router.push(targetPath);
@@ -87,16 +92,15 @@ export default function FeedPage() {
     <div className="min-h-screen bg-[#f3f4f6] text-slate-900 px-2 sm:px-4 py-4 font-sans">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-8 gap-5">
 
-        {/* ================= COLUMN 1: CENTER MAIN STREAM FEED CONTENT ================= */}
+        {/* ================= MAIN COLUMN: CENTER TIMELINE CONTENT ================= */}
         <main className="col-span-1 lg:col-span-5 space-y-4">
           
-          {/* Horizontal Featured Card Slider Block */}
+          {/* Featured Post Card Row */}
           {featuredPosts.length > 0 && (
             <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
               <h2 className="text-xs sm:text-sm font-bold text-slate-800 tracking-wide">
                 Featured Post
               </h2>
-              
               <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none snap-x overflow-y-hidden">
                 {featuredPosts.map((feat: any) => (
                   <div 
@@ -106,12 +110,10 @@ export default function FeedPage() {
                     style={{ backgroundImage: `url(${feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    
                     <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/20 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10 max-w-[90%]">
                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20" />
                       <span className="text-[8px] text-white font-medium truncate">User</span>
                     </div>
-
                     <div className="absolute bottom-2 inset-x-2">
                       <p className="text-[9px] sm:text-[10px] text-white font-semibold line-clamp-2 leading-snug">
                         {feat.caption}
@@ -123,21 +125,40 @@ export default function FeedPage() {
             </div>
           )}
 
-          {/* Vertical Post Render Feed Stack Loop */}
+          {/* Timeline Posts or Skeleton Loaders */}
           <div className="space-y-4">
             {feedLoading ? (
-              <div className="text-center py-12 text-xs text-slate-400 animate-pulse">Assembling content stream...</div>
+              // 🎰 🟢 THE SKELETON: Renders responsive cards during active API loading cycles
+              <div className="space-y-4 animate-pulse">
+                {[1, 2].map((skeletonIndex) => (
+                  <div key={skeletonIndex} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-10 w-10 bg-slate-200 rounded-full" />
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-3 bg-slate-200 rounded w-28" />
+                        <div className="h-2.5 bg-slate-200 rounded w-16" />
+                      </div>
+                    </div>
+                    <div className="w-full h-56 bg-slate-200 rounded-xl" />
+                    <div className="space-y-2">
+                      <div className="h-3 bg-slate-200 rounded w-full" />
+                      <div className="h-3 bg-slate-200 rounded w-5/6" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : posts.length === 0 ? (
               <div className="text-center py-10 bg-white border border-slate-200 rounded-xl text-slate-400 text-xs">
                 No recent feed content found.
               </div>
             ) : (
+              // 🟢 Renders real data perfectly using your modular component
               posts.map((item: any) => <PostCard key={item._id} post={item} />)
             )}
           </div>
         </main>
 
-        {/* ================= COLUMN 2: RIGHT SIDEBAR WIDGET PANEL ================= */}
+        {/* ================= SIDEBAR COLUMN: RIGHT BANNER LAYOUT ================= */}
         <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
           <div 
             onClick={() => handlePersonalizedRoute('/personalized-hub')}
