@@ -181,5 +181,3 @@ export default function FeedPage() {
   );
 }
 
-
-Refer this old working code
