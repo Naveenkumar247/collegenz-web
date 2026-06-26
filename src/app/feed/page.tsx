@@ -78,6 +78,13 @@ export default function FeedPage() {
     loadDataPools();
   }, [isMounted]);
 
+  // 🟢 NEW: Synchronizes reactive state property trees when like/save actions occur inside sub-components
+  const handlePostStateRefresh = (updatedPost: any) => {
+    setPosts((prevPosts) =>
+      prevPosts.map((p) => (p._id === updatedPost._id ? updatedPost : p))
+    );
+  };
+
   const handlePersonalizedRoute = (targetPath: string) => {
     if (!isAuthenticated) {
       router.push(`/login?redirectTo=${encodeURIComponent(targetPath)}`);
@@ -96,10 +103,10 @@ export default function FeedPage() {
         <main className="col-span-1 lg:col-span-5 space-y-4">
           
           {feedLoading ? (
-            // 🎰 🟢 STORIES + FEED INTEGRATED RESPONSIVE SKELETON
+            // 🎰 STORIES + FEED INTEGRATED RESPONSIVE SKELETON
             <div className="space-y-4 animate-pulse">
               
-              {/* 🟢 Stories Layout Skeleton for the Featured section */}
+              {/* Stories Layout Skeleton for the Featured section */}
               <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
                 <div className="h-3 bg-slate-200 rounded w-24 mb-2" />
                 <div className="flex space-x-3 overflow-x-hidden">
@@ -131,7 +138,7 @@ export default function FeedPage() {
               ))}
             </div>
           ) : (
-            // 🟢 REAL DATA RENDER LAYER
+            // REAL DATA RENDER LAYER
             <>
               {/* Featured Post Card Row */}
               {featuredPosts.length > 0 && (
@@ -170,7 +177,14 @@ export default function FeedPage() {
                     No recent feed content found.
                   </div>
                 ) : (
-                  posts.map((item: any) => <PostCard key={item._id} post={item} />)
+                  // 🟢 UPDATED: Injects the dynamic updater callback into individual PostCard elements
+                  posts.map((item: any) => (
+                    <PostCard 
+                      key={item._id} 
+                      post={item} 
+                      onPostUpdate={handlePostStateRefresh} 
+                    />
+                  ))
                 )}
               </div>
             </>
