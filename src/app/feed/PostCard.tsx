@@ -1,157 +1,171 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuthStore } from '@/store/useAuthStore';
 
-// 🟢 PERFECT DEFINITION AT THE CORRECT FILE PATH
-interface PostCardProps {
-  post: any;
-  onPostUpdate?: (updatedPost: any) => void;
-}
+export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpdate: any }) {
+  // 1. Image Slider State
+  const [currentImageIdx, setCurrentImageIdx] = useState(0);
 
-export default function PostCard({ post, onPostUpdate }: PostCardProps) {
-  const { isAuthenticated } = useAuthStore((state: any) => state);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isLiking, setIsLiking] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  // 2. Optimistic UI States
+  const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser);
+  const [likesCount, setLikesCount] = useState(post.likesCount || 0);
+  const [isSaved, setIsSaved] = useState(post.isSavedByCurrentUser);
+  
+  const images = Array.isArray(post.images) && post.images.length > 0 ? post.images : [];
 
-  const images: string[] = Array.isArray(post.images) 
-    ? post.images 
-    : post.image || post.postMedia 
-      ? [post.image || post.postMedia] 
-      : [];
+  // Format the date (Fallback to current date if missing)
+  const formattedDate = post.createdAt 
+    ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })
+    : '';
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const cleanToken = token?.startsWith('"') && token?.endsWith('"') ? token.slice(1, -1) : token;
+  const getAuthHeaders = () => {
+    let token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) token = token.replace(/"/g, ''); 
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+  };
 
+  // --- ACTIONS ---
+  
   const handleLike = async () => {
-    if (!isAuthenticated || isLiking) return;
-    setIsLiking(true);
+    setIsLiked(!isLiked);
+    setLikesCount((prev: number) => isLiked ? prev - 1 : prev + 1);
+
     try {
       const res = await window.fetch(`https://collegenz-api.onrender.com/api/v1/posts/${post._id}/like`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${cleanToken}`,
-          'Content-Type': 'application/json'
-        }
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const updatedPost = await res.json();
-        if (onPostUpdate) onPostUpdate(updatedPost);
+        onPostUpdate(updatedPost); 
       }
     } catch (err) {
-      console.error('Like sync failed:', err);
-    } finally {
-      setIsLiking(false);
+      console.error('Like failed', err);
+      setIsLiked(isLiked);
+      setLikesCount(likesCount);
     }
   };
 
   const handleSave = async () => {
-    if (!isAuthenticated || isSaving) return;
-    setIsSaving(true);
+    setIsSaved(!isSaved);
     try {
       const res = await window.fetch(`https://collegenz-api.onrender.com/api/v1/posts/${post._id}/save`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${cleanToken}`,
-          'Content-Type': 'application/json'
-        }
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         const updatedPost = await res.json();
-        if (onPostUpdate) onPostUpdate(updatedPost);
+        onPostUpdate(updatedPost);
       }
     } catch (err) {
-      console.error('Save sync failed:', err);
-    } finally {
-      setIsSaving(false);
+      setIsSaved(isSaved);
     }
   };
 
-  const handleShare = async () => {
-    const postUrl = `${window.location.origin}/posts/${post._id}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Post by ${post.author?.name || 'CollegenZ User'}`,
-          text: post.caption || post.content,
-          url: postUrl,
-        });
-      } catch (err) {
-        console.log('Share canceled');
-      }
-    } else {
-      navigator.clipboard.writeText(postUrl);
-      alert('Link copied to clipboard!');
-    }
-  };
-
-  const nextImage = () => {
-    if (images.length <= 1) return;
-    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  };
-
-  const prevImage = () => {
-    if (images.length <= 1) return;
-    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const scrollLeft = e.currentTarget.scrollLeft;
+    const width = e.currentTarget.clientWidth;
+    const newIdx = Math.round(scrollLeft / width);
+    setCurrentImageIdx(newIdx);
   };
 
   return (
-    <article className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4 shadow-sm">
-      <div className="flex items-center justify-between">
+    <div className="bg-white border border-slate-200 rounded-2xl mb-4 overflow-hidden shadow-sm">
+      
+      {/* 1. Header (Avatar, Name, Date) */}
+      <div className="flex items-center justify-between p-4">
         <div className="flex items-center space-x-3">
           <img 
-            src={post.author?.picture || post.avatar || 'https://collegenz.in/uploads/profilepic.jpg'} 
-            alt="" 
-            className="w-9 h-9 rounded-full object-cover border border-slate-100" 
+            src={post.author?.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
+            alt="Profile" 
+            className="w-10 h-10 rounded-full object-cover border border-slate-100"
+            onError={(e) => { e.currentTarget.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'; }}
           />
-          <div>
-            <h4 className="text-xs font-bold text-slate-900">{post.author?.name || post.username || 'Anonymous Student'}</h4>
-            <p className="text-[10px] text-slate-400 font-medium">
-              {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'Recently'}
-            </p>
+          <div className="flex flex-col">
+            <h3 className="text-sm font-bold text-slate-800 leading-tight">{post.author?.name}</h3>
+            {formattedDate && <span className="text-[11px] text-slate-400 mt-0.5">{formattedDate}</span>}
           </div>
         </div>
-        <span className="text-slate-400 font-bold cursor-pointer hover:text-slate-600 px-1">•••</span>
+        <button className="text-slate-400 hover:text-slate-600">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+        </button>
       </div>
 
+      {/* 2. Image Carousel */}
       {images.length > 0 && (
-        <div className="w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-100 relative group aspect-square flex items-center justify-center">
-          <img src={images[currentImageIndex]} alt="" className="w-full h-full object-contain select-none"/>
+        <div className="relative w-full bg-slate-50 border-y border-slate-100">
+          <div 
+            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-none"
+            onScroll={handleScroll}
+          >
+            {images.map((imgUrl: string, idx: number) => (
+              <img 
+                key={idx}
+                src={imgUrl} 
+                alt={`Post content ${idx + 1}`}
+                className="w-full h-auto max-h-[500px] flex-shrink-0 snap-center object-contain"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }} // Hides broken image links gracefully
+              />
+            ))}
+          </div>
+          
           {images.length > 1 && (
-            <>
-              <button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10">‹</button>
-              <button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10">›</button>
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10 bg-black/20 px-2 py-1 rounded-full">
-                {images.map((_, idx) => (
-                  <div key={idx} className={`h-1.5 w-1.5 rounded-full transition-all ${currentImageIndex === idx ? 'bg-emerald-500 scale-110' : 'bg-white/60'}`}/>
-                ))}
-              </div>
-            </>
+            <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full z-10">
+              {currentImageIdx + 1}/{images.length}
+            </div>
           )}
         </div>
       )}
 
-      <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">
-        {post.content || post.caption || post.text}
-      </p>
-      
-      <div className="flex items-center justify-between pt-2 border-t border-slate-50 text-[11px] font-semibold text-slate-400">
-        <div className="flex items-center space-x-4">
-          <button onClick={handleLike} disabled={!isAuthenticated} className={`flex items-center space-x-1 focus:outline-none ${post.isLikedByCurrentUser ? 'text-rose-500' : ''}`}>
-            <span className="text-sm">{post.isLikedByCurrentUser ? '❤️' : '♡'}</span>
-            <span>{post.likesCount ?? 0}</span>
-          </button>
-          <button onClick={handleShare} className="flex items-center space-x-1 hover:text-slate-600">
-            <span className="text-sm">💬</span>
-            <span>Share</span>
-          </button>
+      {/* 3. Text Context (Moved BELOW images) */}
+      {post.content && (
+        <div className="px-4 py-3 pt-4">
+          <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+            {post.content}
+          </p>
         </div>
-        <button onClick={handleSave} disabled={!isAuthenticated} className={`flex items-center space-x-1 focus:outline-none ${post.isSavedByCurrentUser ? 'text-amber-500' : ''}`}>
-          <span className="text-sm">{post.isSavedByCurrentUser ? '🔖' : '🗂️'}</span>
-          <span>{post.savesCount ?? 0}</span>
+      )}
+
+      {/* 4. Action Bar (Moved to the VERY BOTTOM) */}
+      <div className="px-4 py-3 flex items-center justify-between border-t border-slate-100">
+        <div className="flex items-center space-x-6">
+          
+          {/* Like Button */}
+          <button onClick={handleLike} className="flex items-center space-x-1.5 group transition-transform active:scale-95">
+            <svg className={`w-5 h-5 transition-colors ${isLiked ? 'text-red-500 fill-red-500' : 'text-slate-500 group-hover:text-slate-700 fill-transparent'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            <span className={`text-sm font-medium ${isLiked ? 'text-red-500' : 'text-slate-500'}`}>
+              {likesCount}
+            </span>
+          </button>
+
+          {/* Share/Comment Button */}
+          <button className="flex items-center space-x-1.5 text-slate-500 hover:text-slate-700 transition-transform active:scale-95">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <span className="text-sm font-medium">Share</span>
+          </button>
+
+        </div>
+
+        {/* Save/Bookmark Button */}
+        <button onClick={handleSave} className="flex items-center space-x-1 text-slate-500 hover:text-slate-700 transition-transform active:scale-95">
+          <svg className={`w-5 h-5 ${isSaved ? 'text-emerald-600 fill-emerald-600' : 'fill-transparent'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+          {post.savesCount > 0 && (
+            <span className={`text-sm font-medium ${isSaved ? 'text-emerald-600' : 'text-slate-500'}`}>
+              {post.savesCount}
+            </span>
+          )}
         </button>
       </div>
-    </article>
+
+    </div>
   );
 }
