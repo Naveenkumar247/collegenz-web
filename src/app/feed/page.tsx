@@ -1,200 +1,142 @@
-'use client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { Post } from './schema/post.schema';
+import { User } from '../users/schema/user.schema';
 
-import React, { useEffect, useState, useRef } from 'react';
-// 🟢 Points directly to your local PostCard file in the same folder
-import PostCard from './PostCard'; 
-import { useAuthStore } from '@/store/useAuthStore';
-import { useRouter } from 'next/navigation';
+@Injectable()
+export class PostsService {
+  constructor(
+    @InjectModel(Post.name) private readonly postModel: Model<Post>,
+    @InjectModel(User.name) private readonly userModel: Model<User>,
+  ) {}
 
-export default function FeedPage() {
-  const { isAuthenticated, setToken } = useAuthStore((state: any) => state);
-  const router = useRouter();
-  
-  // Layout States
-  const [posts, setPosts] = useState<any[]>([]);
-  const [featuredPosts, setFeaturedPosts] = useState<any[]>([]);
-  const [feedLoading, setFeedLoading] = useState(true);
-  const [isMounted, setIsMounted] = useState(false);
-  
-  const hasFetched = useRef(false);
+  async getFeed(type: string, userId: string, pageNum: number): Promise<any[]> {
+    const limit = 10;
+    const skip = (pageNum - 1) * limit;
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    try {
+      const rawPosts = await this.postModel
+        .find()
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
 
-  // Sync token back up from storage securely to state trees
-  useEffect(() => {
-    if (!isMounted) return;
-    const backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (backupToken && !isAuthenticated) {
-      if (setToken && typeof setToken === 'function') {
-        setToken(backupToken);
+      let userSavedPosts: any[] = [];
+      if (userId && Types.ObjectId.isValid(userId)) {
+        const user: any = await this.userModel.findById(userId).lean();
+        if (user && Array.isArray(user.savedPosts)) {
+          userSavedPosts = user.savedPosts;
+        }
       }
+
+      return rawPosts.map((post: any) => {
+        const likesArray = Array.isArray(post.likes) ? post.likes : (Array.isArray(post.likedBy) ? post.likedBy : []);
+        const savesArray = Array.isArray(post.savedBy) ? post.savedBy : [];
+
+        return {
+          ...post,
+          // Safely map caption/text from DB to frontend content
+          content: post.caption || post.content || post.text || (post.data ? String(post.data) : ''),
+          // Safely map single image string to images array for frontend
+          images: Array.isArray(post.images) ? post.images : (post.image ? [post.image] : []),
+          author: {
+            name: post.username || post.author?.name || post.author?.username || 'Anonymous User',
+            picture: post.picture || post.avatar || post.author?.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'
+          },
+          // Use pre-calculated likesCount if it exists, otherwise calculate from array
+          likesCount: post.likesCount !== undefined ? post.likesCount : likesArray.length,
+          savesCount: savesArray.length,
+          isLikedByCurrentUser: userId ? likesArray.some((id: any) => id.toString() === userId.toString()) : false,
+          isSavedByCurrentUser: userId ? (savesArray.some((id: any) => id.toString() === userId.toString()) || 
+                                userSavedPosts.some((id: any) => id.toString() === post._id.toString())) : false,
+        };
+      });
+    } catch (error) {
+      console.error('🚨 Crash caught inside getFeed service:', error);
+      return [];
     }
-  }, [isAuthenticated, isMounted, setToken]);
+  }
 
-  useEffect(() => {
-    if (!isMounted) return;
+  async getFeatured(): Promise<any[]> {
+    try {
+      const featured = await this.postModel.find({ postType: 'featured' }).limit(5).lean();
+      if (featured.length > 0) return featured;
+      return this.postModel.find().limit(4).lean();
+    } catch {
+      return [];
+    }
+  }
 
-    const loadDataPools = async () => {
-      if (hasFetched.current) return;
-      hasFetched.current = true;
-      setFeedLoading(true);
-      
-      try {
-        let backupToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        const cleanToken = backupToken?.startsWith('"') && backupToken?.endsWith('"') 
-          ? backupToken.slice(1, -1) 
-          : backupToken;
+  async toggleLikePost(postId: string, userId: string): Promise<any> {
+    if (!postId || !userId) throw new NotFoundException('Invalid arguments');
+    const postObjectId = new Types.ObjectId(postId);
+    const userObjectId = new Types.ObjectId(userId);
 
-        const authHeaders: Record<string, string> = {};
-        if (cleanToken) {
-          authHeaders['Authorization'] = `Bearer ${cleanToken}`;
-        }
+    const post: any = await this.postModel.findById(postObjectId);
+    if (!post) throw new NotFoundException('Post not found');
 
-        // 1. Fetch Featured Panel Cards (🟢 FIXED: Added /v1/ back into the URL)
-        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/featured', {
-          headers: authHeaders
-        });
-        if (featuredRes.ok) {
-          const featuredData = await featuredRes.json();
-          setFeaturedPosts(Array.isArray(featuredData) ? featuredData : []);
-        }
+    const likesArray = Array.isArray(post.likes) ? post.likes : [];
+    const hasLiked = likesArray.some((id: any) => id.toString() === userObjectId.toString());
 
-        // 2. Fetch General Scroll Feed Posts (🟢 FIXED: Added /v1/ back into the URL)
-        const feedRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/feed', {
-          headers: authHeaders
-        });
-        if (feedRes.ok) {
-          const feedData = await feedRes.json();
-          setPosts(Array.isArray(feedData) ? feedData : []);
-        }
-      } catch (err) {
-        console.error('Data pool connection failed:', err);
-      } finally {
-        setFeedLoading(false);
-      }
-    };
-
-    loadDataPools();
-  }, [isMounted]);
-
-  // Synchronizes state tracking trees reactively when a like or save occurs inside PostCard
-  const handlePostStateRefresh = (updatedPost: any) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((p) => (p._id === updatedPost._id ? updatedPost : p))
-    );
-  };
-
-  const handlePersonalizedRoute = (targetPath: string) => {
-    if (!isAuthenticated) {
-      router.push(`/login?redirectTo=${encodeURIComponent(targetPath)}`);
+    if (hasLiked) {
+      await this.postModel.updateOne({ _id: postObjectId }, { $pull: { likes: userObjectId, likedBy: userObjectId } });
+      await this.userModel.updateOne({ _id: userObjectId }, { $pull: { likedPosts: postObjectId } });
     } else {
-      router.push(targetPath);
+      await this.postModel.updateOne({ _id: postObjectId }, { $addToSet: { likes: userObjectId, likedBy: userObjectId } });
+      await this.userModel.updateOne({ _id: userObjectId }, { $addToSet: { likedPosts: postObjectId } });
     }
-  };
+    return this.getNormalizedPostForUser(postId, userId);
+  }
 
-  if (!isMounted) return <div className="p-6 text-slate-500 text-xs font-mono">Connecting Gateway...</div>;
+  async toggleSavePost(postId: string, userId: string): Promise<any> {
+    if (!postId || !userId) throw new NotFoundException('Invalid arguments');
+    const postObjectId = new Types.ObjectId(postId);
+    const userObjectId = new Types.ObjectId(userId);
 
-  return (
-    <div className="min-h-screen bg-[#f3f4f6] text-slate-900 px-2 sm:px-4 py-4 font-sans">
-      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-8 gap-5">
+    const post: any = await this.postModel.findById(postObjectId);
+    if (!post) throw new NotFoundException('Post not found');
 
-        {/* ================= MAIN COLUMN: CENTER TIMELINE CONTENT ================= */}
-        <main className="col-span-1 lg:col-span-5 space-y-4">
-          
-          {/* Featured Post Card Row */}
-          {featuredPosts.length > 0 && (
-            <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
-              <h2 className="text-xs sm:text-sm font-bold text-slate-800 tracking-wide">
-                Featured Post
-              </h2>
-              <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none snap-x overflow-y-hidden">
-                {featuredPosts.map((feat: any) => (
-                  <div 
-                    key={feat._id} 
-                    onClick={() => handlePersonalizedRoute(`/posts/${feat._id}`)}
-                    className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm cursor-pointer"
-                    style={{ backgroundImage: `url(${feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/20 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10 max-w-[90%]">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20" />
-                      <span className="text-[8px] text-white font-medium truncate">User</span>
-                    </div>
-                    <div className="absolute bottom-2 inset-x-2">
-                      <p className="text-[9px] sm:text-[10px] text-white font-semibold line-clamp-2 leading-snug">
-                        {feat.caption}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+    const savesArray = Array.isArray(post.savedBy) ? post.savedBy : [];
+    const isSaved = savesArray.some((id: any) => id.toString() === userObjectId.toString());
 
-          {/* Timeline Posts or Skeleton Loaders */}
-          <div className="space-y-4">
-            {feedLoading ? (
-              <div className="space-y-4 animate-pulse">
-                {[1, 2].map((skeletonIndex) => (
-                  <div key={skeletonIndex} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 bg-slate-200 rounded-full" />
-                      <div className="space-y-1.5 flex-1">
-                        <div className="h-3 bg-slate-200 rounded w-28" />
-                        <div className="h-2.5 bg-slate-200 rounded w-16" />
-                      </div>
-                    </div>
-                    <div className="w-full h-56 bg-slate-200 rounded-xl" />
-                    <div className="space-y-2">
-                      <div className="h-3 bg-slate-200 rounded w-full" />
-                      <div className="h-3 bg-slate-200 rounded w-5/6" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-10 bg-white border border-slate-200 rounded-xl text-slate-400 text-xs">
-                No recent feed content found.
-              </div>
-            ) : (
-              // 🟢 FIXED: Safely casts component constructor to bypass Vercel's strict interface check
-              posts.map((item: any) => {
-                const CardComponent = PostCard as any;
-                return (
-                  <CardComponent 
-                    key={item._id} 
-                    post={item} 
-                    onPostUpdate={handlePostStateRefresh}
-                  />
-                );
-              })
-            )}
-          </div>
-        </main>
+    if (isSaved) {
+      await this.postModel.updateOne({ _id: postObjectId }, { $pull: { savedBy: userObjectId } });
+      await this.userModel.updateOne({ _id: userObjectId }, { $pull: { savedPosts: postObjectId } });
+    } else {
+      await this.postModel.updateOne({ _id: postObjectId }, { $addToSet: { savedBy: userObjectId } });
+      await this.userModel.updateOne({ _id: userObjectId }, { $addToSet: { savedPosts: postObjectId } });
+    }
+    return this.getNormalizedPostForUser(postId, userId);
+  }
 
-        {/* ================= SIDEBAR COLUMN: RIGHT BANNER LAYOUT ================= */}
-        <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
-          <div 
-            onClick={() => handlePersonalizedRoute('/personalized-hub')}
-            className="bg-[#eefbf4] border border-emerald-100 p-5 rounded-2xl text-center space-y-3 shadow-sm cursor-pointer hover:border-emerald-200 transition-all"
-          >
-            <div className="w-10 h-10 rounded-full bg-white border border-emerald-200 flex items-center justify-center mx-auto shadow-sm">
-              <span className="text-sm text-emerald-600 font-bold">❓</span>
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-xs font-bold text-emerald-800">
-                Do you know what is going on?
-              </h3>
-              <p className="text-[11px] text-emerald-700/80 leading-relaxed px-1">
-                Connect globally with college networks, trace ongoing placement seasons, and trade info metrics seamlessly.
-              </p>
-            </div>
-          </div>
-        </aside>
+  async trackSharePost(postId: string, userId: string): Promise<any> {
+    const postObjectId = new Types.ObjectId(postId);
+    const userObjectId = userId ? new Types.ObjectId(userId) : new Types.ObjectId();
+    await this.postModel.updateOne({ _id: postObjectId }, { $addToSet: { sharedBy: userObjectId } });
+    return this.getNormalizedPostForUser(postId, userId || '');
+  }
 
-      </div>
-    </div>
-  );
+  private async getNormalizedPostForUser(postId: string, userId: string) {
+    const post: any = await this.postModel.findById(postId).lean();
+    if (!post) throw new NotFoundException('Post not found');
+
+    const likesArray = Array.isArray(post.likes) ? post.likes : (Array.isArray(post.likedBy) ? post.likedBy : []);
+    const savesArray = Array.isArray(post.savedBy) ? post.savedBy : [];
+
+    return {
+      ...post,
+      content: post.caption || post.content || post.text || (post.data ? String(post.data) : ''),
+      images: Array.isArray(post.images) ? post.images : (post.image ? [post.image] : []),
+      author: {
+        name: post.username || post.author?.name || post.author?.username || 'Anonymous User',
+        picture: post.picture || post.avatar || post.author?.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'
+      },
+      likesCount: post.likesCount !== undefined ? post.likesCount : likesArray.length,
+      savesCount: savesArray.length,
+      isLikedByCurrentUser: userId ? likesArray.some((id: any) => id.toString() === userId.toString()) : false,
+      isSavedByCurrentUser: userId ? savesArray.some((id: any) => id.toString() === userId.toString()) : false,
+    };
+  }
 }
