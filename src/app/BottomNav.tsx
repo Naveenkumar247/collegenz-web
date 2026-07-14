@@ -8,8 +8,8 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    {/* Glassmorphism background with safe-area padding for mobile */}
     <div className="fixed bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 flex justify-between items-center h-16 z-[999] px-1 pb-safe">
+      {/* Glassmorphism background with safe-area padding for mobile */}
       
       {/* Home */}
       <Link href="/feed" className={`flex flex-col items-center justify-center w-1/5 transition-colors ${pathname === '/feed' ? 'text-green-700' : 'text-slate-500 hover:text-green-600'}`}>
@@ -23,7 +23,7 @@ export default function BottomNav() {
         <span className="text-[10px] font-medium">Internship</span>
       </Link>
 
-      {/* 🚀 Center + Button (Upload) - Now perfectly rounded and un-squishable */}
+      {/* Center + Button (Upload) - Now perfectly rounded and un-squishable */}
       <div className="relative -top-5 flex justify-center w-1/5 shrink-0">
         <Link 
           href="/upload" 
