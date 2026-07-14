@@ -1,6 +1,5 @@
 import React from 'react'; // 🟢 FIXED: Lowercase 'i'
 import './globals.css';
-import BottomNav from './BottomNav'; // Imports your new navigation bar
 
 export const metadata = {
   title: 'CollegenZ',
