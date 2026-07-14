@@ -8,7 +8,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   const pathname = usePathname();
   
   // Header only shows on the root path ('/')
-  const isHomePage = pathname === '/';
+  const isHomePage = pathname === '/feed';
 
   return (
     <div className="min-h-screen flex flex-col">
