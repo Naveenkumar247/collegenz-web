@@ -1,31 +1,25 @@
-import React from 'react'; // 🟢 FIXED: Lowercase 'i'
+import React from 'react';
 import './globals.css';
+import Link from 'next/link';
+// Assuming you move your navigation logic here or keep it as a shared component
 
 export const metadata = {
   title: 'CollegenZ',
   description: 'Enterprise AI-Powered Student Hub Portal',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // 🟢 FIXED: Removed "dark" class to match your clean, white UI screenshots
-    <html lang="en"> 
+    <html lang="en">
       <head>
         <link 
           rel="stylesheet" 
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" 
         />
       </head>
-      {/* 🟢 FIXED: Light background, and added pb-16 so content doesn't hide behind the navbar */}
-      <body className="bg-slate-50 antialiased text-slate-900 pb-16">
-        {children}
-        
-        {/* This injects your bottom navigation across the entire app */}
-        
+      <body className="bg-slate-50 antialiased text-slate-900">
+        {/* Your Sidebar/Header/BottomNav components should be placed here */}
+        <main>{children}</main>
       </body>
     </html>
   );
