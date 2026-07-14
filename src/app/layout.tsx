@@ -25,7 +25,7 @@ export default function RootLayout({
         {children}
         
         {/* This injects your bottom navigation across the entire app */}
-        <BottomNav /> 
+        
       </body>
     </html>
   );
