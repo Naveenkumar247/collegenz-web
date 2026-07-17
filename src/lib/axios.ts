@@ -1,19 +1,15 @@
 import axios from 'axios';
+import { getAuthHeader } from '@/utils/auth'; // Point to where you saved the utility
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: 'https://collegenz-api.onrender.com/api/v1',
 });
 
-// Interceptor to inject the JWT access token into every request automatically
+// Interceptor to inject the token into every request automatically
 api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  const headers = getAuthHeader();
+  if (headers.Authorization) {
+    config.headers.Authorization = headers.Authorization;
   }
   return config;
 });
