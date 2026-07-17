@@ -17,7 +17,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
       {isHomePage && (
         <header className="fixed top-0 left-0 right-0 h-[60px] bg-[#228B22] text-white flex items-center justify-between px-6 z-[1050] shadow-sm">
           <h1 className="font-bold text-xl">
-            <Link href="/" className="text-white no-underline">CollegenZ</Link>
+            <Link href="/aboutus" className="text-white no-underline">CollegenZ</Link>
           </h1>
           <div className="flex items-center gap-5 text-xl">
             <Link href="/notifications"><i className="bi bi-bell"></i></Link>
