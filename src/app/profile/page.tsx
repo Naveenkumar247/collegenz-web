@@ -5,7 +5,6 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const { isAuthenticated, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
   
   const [isMounted, setIsMounted] = useState(false);
@@ -22,7 +21,8 @@ export default function ProfilePage() {
 
     const fetchUserProfile = async () => {
       const token = localStorage.getItem('token');
-      const cleanToken = token?.replace(/"/g, '');
+      // Fix: Clean token accurately
+      const cleanToken = token?.replace(/^"|"$/g, '');
 
       if (!cleanToken) {
         router.push('/login');
@@ -30,6 +30,7 @@ export default function ProfilePage() {
       }
 
       try {
+        // Fix: Absolute URL ensures no more 404s
         const response = await window.fetch('https://collegenz-api.onrender.com/api/v1/auth/profile', {
           method: 'GET',
           headers: {
@@ -40,7 +41,7 @@ export default function ProfilePage() {
         
         if (response.ok) {
           const data = await response.json();
-          // Extract user object safely
+          // Data unpacking
           const parsedUser = data.user || data.data || data;
           setUserData(parsedUser);
         } else if (response.status === 401) {
@@ -67,6 +68,7 @@ export default function ProfilePage() {
     );
   }
 
+  // Data Mappings
   const profileName = userData?.name || userData?.username || 'Unknown User';
   const profileRole = userData?.zrole || userData?.role || 'user';
   const accountType = userData?.accountType || 'Public Account';
@@ -85,7 +87,8 @@ export default function ProfilePage() {
           alt="Profile"
           className="w-24 h-24 rounded-full border-4 border-white object-cover shadow-sm bg-slate-100"
           onError={(e) => {
-            e.currentTarget.onerror = null; // 🟢 FIX: Stops infinite loop
+            // 🟢 CRITICAL FIX: Stops the infinite console error loop
+            e.currentTarget.onerror = null; 
             e.currentTarget.src = 'https://placehold.co/100x100/png?text=User'; 
           }}
         />
