@@ -46,7 +46,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
             <i className="bi bi-plus-lg text-2xl"></i>
           </Link>
         </div>
-        <Link href="/events" className={pathname === '/events' ? 'text-[#228B22]' : 'text-[#64748b]'}>
+        <Link href="/event" className={pathname === '/events' ? 'text-[#228B22]' : 'text-[#64748b]'}>
           <i className="bi bi-calendar-check text-2xl"></i>
         </Link>
         <Link href="/settings" className={pathname === '/settings' ? 'text-[#228B22]' : 'text-[#64748b]'}>
