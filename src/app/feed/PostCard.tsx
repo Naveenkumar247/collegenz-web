@@ -9,13 +9,15 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
   // 2. Optimistic UI States for instant feedback
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser);
   const [likesCount, setLikesCount] = useState(post.likesCount || 0);
+  
   const [isSaved, setIsSaved] = useState(post.isSavedByCurrentUser);
+  const [savesCount, setSavesCount] = useState(post.savesCount || 0);
   
   const images = Array.isArray(post.images) && post.images.length > 0 ? post.images : [];
 
   // Format the date gracefully
   const formattedDate = post.createdAt 
-    ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })
+    ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : '';
 
   // Helper to safely extract and clean the JWT token
@@ -45,7 +47,6 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
         headers: getAuthHeaders()
       });
       
-      // If server rejects, instantly revert UI
       if (!res.ok) {
         console.error('Server rejected the like request.');
         setIsLiked(wasLiked);
@@ -64,12 +65,20 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
 
   const handleSave = async () => {
     const wasSaved = isSaved;
+    const previousCount = savesCount;
     
     // Instantly update UI
     setIsSaved(!wasSaved);
+    setSavesCount(wasSaved ? previousCount - 1 : previousCount + 1);
+
+    // 🟢 ROUTING LOGIC: Determine if it's an event or regular post
+    const isEvent = post.postType === 'event' || post.type === 'event';
+    const endpoint = isEvent 
+      ? `https://collegenz-api.onrender.com/api/v1/posts/${post._id}/save-event`
+      : `https://collegenz-api.onrender.com/api/v1/posts/${post._id}/save`;
 
     try {
-      const res = await window.fetch(`https://collegenz-api.onrender.com/api/v1/posts/${post._id}/save`, {
+      const res = await window.fetch(endpoint, {
         method: 'POST',
         headers: getAuthHeaders()
       });
@@ -77,13 +86,20 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
       if (!res.ok) {
         console.error('Server rejected the save request.');
         setIsSaved(wasSaved);
+        setSavesCount(previousCount);
         return;
       }
       
       const updatedPost = await res.json();
-      onPostUpdate(updatedPost);
+      
+      // If the backend returns just a message (like your toggleSaveEvent currently does), 
+      // we don't overwrite the whole post. If it returns the updated post, we do.
+      if (updatedPost._id) {
+        onPostUpdate(updatedPost);
+      }
     } catch (err) {
       setIsSaved(wasSaved);
+      setSavesCount(previousCount);
     }
   };
 
@@ -96,7 +112,7 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl mb-4 overflow-hidden shadow-sm">
+    <div className="bg-white border border-slate-200 rounded-2xl mb-4 overflow-hidden shadow-sm relative">
       
       {/* 1. Header (Avatar, Name, Date, Options) */}
       <div className="flex items-center justify-between p-4">
@@ -108,7 +124,15 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
             onError={(e) => { e.currentTarget.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'; }}
           />
           <div className="flex flex-col">
-            <h3 className="text-sm font-bold text-slate-800 leading-tight">{post.author?.name}</h3>
+            <div className="flex items-center space-x-2">
+              <h3 className="text-sm font-bold text-slate-800 leading-tight">{post.author?.name}</h3>
+              {/* 🟢 EVENT BADGE */}
+              {(post.postType === 'event' || post.type === 'event') && (
+                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                  Event
+                </span>
+              )}
+            </div>
             {formattedDate && <span className="text-[11px] text-slate-400 mt-0.5">{formattedDate}</span>}
           </div>
         </div>
@@ -178,13 +202,17 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
         </div>
 
         {/* Save/Bookmark Button */}
-        <button onClick={handleSave} className="flex items-center space-x-1 text-slate-500 hover:text-slate-700 transition-transform active:scale-95">
+        <button 
+          onClick={handleSave} 
+          className="flex items-center space-x-1 text-slate-500 hover:text-slate-700 transition-transform active:scale-95"
+          title={post.postType === 'event' || post.type === 'event' ? "Save Event" : "Save Post"}
+        >
           <svg className={`w-6 h-6 transition-colors ${isSaved ? 'text-emerald-600 fill-emerald-600' : 'fill-transparent'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
-          {post.savesCount > 0 && (
+          {savesCount > 0 && (
             <span className={`text-sm font-medium ${isSaved ? 'text-emerald-600' : 'text-slate-500'}`}>
-              {post.savesCount}
+              {savesCount}
             </span>
           )}
         </button>
