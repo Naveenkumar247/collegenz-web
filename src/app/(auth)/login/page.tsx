@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setToken, isAuthenticated } = useAuthStore((state: any) => state);
+  const searchParams = useSearchParams();
+  const { setToken } = useAuthStore((state: any) => state);
 
   // Form input states
   const [email, setEmail] = useState('');
@@ -14,36 +15,34 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 🟢 1. AUTOMATED HANDSHAKE: Intercept token parameters arriving via Google OAuth URLs
+  // 1. AUTOMATED HANDSHAKE: Capture token from Google OAuth redirect
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlToken = urlParams.get('token');
+    const urlToken = searchParams.get('token');
 
-      if (urlToken) {
-        // Normalize token syntax structures
-        const cleanToken = urlToken.startsWith('"') && urlToken.endsWith('"') 
-          ? urlToken.slice(1, -1) 
-          : urlToken;
+    if (urlToken) {
+      // Normalize token syntax
+      const cleanToken = urlToken.startsWith('"') && urlToken.endsWith('"') 
+        ? urlToken.slice(1, -1) 
+        : urlToken;
 
-        // Persist session parameters to local engines
-        localStorage.setItem('token', cleanToken);
-        
-        if (setToken) {
-          setToken(cleanToken);
-        }
-
-        // Pull previous route target configuration, falling back securely to profile layout
-        const targetRedirect = sessionStorage.getItem('authRedirectTarget') || '/profile';
-        sessionStorage.removeItem('authRedirectTarget');
-        
-        // Dispatch instant routing forward redirection
-        router.push(targetRedirect);
+      // 1. Persist to localStorage
+      localStorage.setItem('token', cleanToken);
+      
+      // 2. Update Zustand store
+      if (setToken) {
+        setToken(cleanToken);
       }
-    }
-  }, [router, setToken]);
 
-  // 🟢 2. STANDARD INLINE AUTHENTICATION: Email/Password credential submit pipeline
+      // 3. Retrieve target redirect path
+      const targetRedirect = sessionStorage.getItem('authRedirectTarget') || '/profile';
+      sessionStorage.removeItem('authRedirectTarget');
+      
+      // 4. Use replace to prevent back-button loops to /login?token=...
+      router.replace(targetRedirect);
+    }
+  }, [searchParams, router, setToken]);
+
+  // 2. STANDARD INLINE AUTHENTICATION
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -71,10 +70,9 @@ export default function LoginPage() {
           setToken(data.token);
         }
 
-        // Forward safely to intended target or default main feed
         const targetRedirect = sessionStorage.getItem('authRedirectTarget') || '/profile';
         sessionStorage.removeItem('authRedirectTarget');
-        router.push(targetRedirect);
+        router.replace(targetRedirect);
       }
     } catch (err: any) {
       setError(err.message || 'An unexpected connection failure occurred.');
@@ -83,7 +81,7 @@ export default function LoginPage() {
     }
   };
 
-  // 🟢 3. GOOGLE INTERACTIVE TRIGGER: Redirects client route window towards OAuth gateway stream
+  // 3. GOOGLE OAUTH TRIGGER
   const handleGoogleOAuthRedirect = () => {
     window.location.href = 'https://collegenz-api.onrender.com/api/v1/auth/google';
   };
@@ -92,7 +90,6 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-6 font-sans">
       <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-100 p-8 shadow-sm space-y-6">
         
-        {/* Branding header metadata matching UI styles */}
         <div className="text-center space-y-1">
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">Welcome back</h2>
           <p className="text-xs text-slate-400">Sign in to your CollegenZ student profile</p>
@@ -104,7 +101,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Credentials Form Element block */}
         <form onSubmit={handleCredentialsLogin} className="space-y-4">
           <div className="space-y-1">
             <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Email Address</label>
@@ -145,7 +141,6 @@ export default function LoginPage() {
           <div className="flex-grow border-t border-slate-100"></div>
         </div>
 
-        {/* OAuth Stream trigger component wrapper */}
         <button
           onClick={handleGoogleOAuthRedirect}
           type="button"
