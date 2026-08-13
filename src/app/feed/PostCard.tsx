@@ -12,6 +12,9 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
   
   const [isSaved, setIsSaved] = useState(post.isSavedByCurrentUser);
   const [savesCount, setSavesCount] = useState(post.savesCount || 0);
+
+  // 3. Share Feedback State
+  const [isCopied, setIsCopied] = useState(false);
   
   const images = Array.isArray(post.images) && post.images.length > 0 ? post.images : [];
 
@@ -71,7 +74,7 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
     setIsSaved(!wasSaved);
     setSavesCount(wasSaved ? previousCount - 1 : previousCount + 1);
 
-    // 🟢 ROUTING LOGIC: Determine if it's an event or regular post
+    // ROUTING LOGIC: Determine if it's an event or regular post
     const isEvent = post.postType === 'event' || post.type === 'event';
     const endpoint = isEvent 
       ? `https://collegenz-api.onrender.com/api/v1/posts/${post._id}/save-event`
@@ -92,14 +95,70 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
       
       const updatedPost = await res.json();
       
-      // If the backend returns just a message (like your toggleSaveEvent currently does), 
-      // we don't overwrite the whole post. If it returns the updated post, we do.
       if (updatedPost._id) {
         onPostUpdate(updatedPost);
       }
     } catch (err) {
       setIsSaved(wasSaved);
       setSavesCount(previousCount);
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const shareUrl = typeof window !== 'undefined' 
+      ? `${window.location.origin}/posts/${post._id}` 
+      : '';
+
+    const shareData = {
+      title: 'Collegenz Post',
+      text: post.content ? `${post.content.slice(0, 80)}...` : 'Check out this post on Collegenz!',
+      url: shareUrl,
+    };
+
+    try {
+      // 1. Try Native Web Share API (Mobile Devices / Safari / Modern Browsers)
+      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else if (navigator.clipboard) {
+        // 2. Fallback to Clipboard Copy (Desktop Chrome / Edge / Firefox)
+        await navigator.clipboard.writeText(shareUrl);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      } else {
+        // 3. Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }
+
+      // 4. Optional backend share counter ping
+      try {
+        const res = await window.fetch(`https://collegenz-api.onrender.com/api/v1/posts/${post._id}/share`, {
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+        if (res.ok) {
+          const updatedPost = await res.json();
+          if (updatedPost?._id && onPostUpdate) {
+            onPostUpdate(updatedPost);
+          }
+        }
+      } catch (err) {
+        // Silently catch in case backend endpoint is not implemented
+      }
+
+    } catch (err: any) {
+      // User cancelled native share dialog
+      if (err.name !== 'AbortError') {
+        console.error('Error sharing post:', err);
+      }
     }
   };
 
@@ -126,7 +185,7 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
           <div className="flex flex-col">
             <div className="flex items-center space-x-2">
               <h3 className="text-sm font-bold text-slate-800 leading-tight">{post.author?.name}</h3>
-              {/* 🟢 EVENT BADGE */}
+              {/* EVENT BADGE */}
               {(post.postType === 'event' || post.type === 'event') && (
                 <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.5 rounded-md">
                   Event
@@ -191,12 +250,27 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
             </span>
           </button>
 
-          {/* Share Button */}
-          <button className="flex items-center space-x-1.5 text-slate-500 hover:text-slate-700 transition-transform active:scale-95">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-            <span className="text-sm font-medium">Share</span>
+          {/* Share Button with Handlers & Feedback */}
+          <button 
+            onClick={handleShare}
+            className="flex items-center space-x-1.5 text-slate-500 hover:text-slate-700 transition-transform active:scale-95"
+            title="Share post"
+          >
+            {isCopied ? (
+              <>
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm font-semibold text-emerald-600">Copied!</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                <span className="text-sm font-medium">Share</span>
+              </>
+            )}
           </button>
 
         </div>
