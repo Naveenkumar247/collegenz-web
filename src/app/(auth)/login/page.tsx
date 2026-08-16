@@ -1,7 +1,10 @@
 'use client';
 
+export const dynamic = 'force-dynamic'; // 👈 Add this line at the top
+
 import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+
 import { useAuthStore } from '@/store/useAuthStore';
 
 // Fallback to custom domain if environment variable is not defined
