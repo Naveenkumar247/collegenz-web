@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 
-export default function LoginPage() {
+// Fallback to custom domain if environment variable is not defined
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.collegenz.in/api/v1';
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setToken } = useAuthStore((state: any) => state);
@@ -49,7 +52,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await window.fetch('https://collegenz-api.onrender.com/api/v1/auth/login', {
+      const response = await window.fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +86,7 @@ export default function LoginPage() {
 
   // 3. GOOGLE OAUTH TRIGGER
   const handleGoogleOAuthRedirect = () => {
-    window.location.href = 'https://collegenz-api.onrender.com/api/v1/auth/google';
+    window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
   return (
@@ -169,5 +172,20 @@ export default function LoginPage() {
 
       </div>
     </div>
+  );
+}
+
+// Default export wrapped in Suspense to resolve Next.js build error
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans">
+          <p className="text-xs text-slate-400">Loading authentication interface...</p>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }
