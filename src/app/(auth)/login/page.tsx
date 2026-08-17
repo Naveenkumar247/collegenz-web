@@ -1,13 +1,9 @@
 'use client';
 
-export const dynamic = 'force-dynamic'; // 👈 Add this line at the top
-
 import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-
 import { useAuthStore } from '@/store/useAuthStore';
 
-// Fallback to custom domain if environment variable is not defined
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.collegenz.in/api/v1';
 
 function LoginForm() {
@@ -15,47 +11,45 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { setToken } = useAuthStore((state: any) => state);
 
-  // Form input states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 1. AUTOMATED HANDSHAKE: Capture token from Google OAuth redirect
+  // 1. Session check & OAuth Callback Handshake
   useEffect(() => {
+    // Check if OAuth failed on backend redirect
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      setError('Google authentication failed. Please try signing in again.');
+    }
+
     const urlToken = searchParams.get('token');
+    const existingToken = localStorage.getItem('token');
 
     if (urlToken) {
-      // Normalize token syntax
-      const cleanToken = urlToken.startsWith('"') && urlToken.endsWith('"') 
-        ? urlToken.slice(1, -1) 
-        : urlToken;
+      const cleanToken = urlToken.replace(/^["']|["']$/g, '');
 
-      // 1. Persist to localStorage
       localStorage.setItem('token', cleanToken);
-      
-      // 2. Update Zustand store
-      if (setToken) {
-        setToken(cleanToken);
-      }
+      if (setToken) setToken(cleanToken);
 
-      // 3. Retrieve target redirect path
       const targetRedirect = sessionStorage.getItem('authRedirectTarget') || '/profile';
       sessionStorage.removeItem('authRedirectTarget');
-      
-      // 4. Use replace to prevent back-button loops to /login?token=...
       router.replace(targetRedirect);
+    } else if (existingToken) {
+      // Auto-redirect already authenticated users away from /login
+      router.replace('/profile');
     }
   }, [searchParams, router, setToken]);
 
-  // 2. STANDARD INLINE AUTHENTICATION
+  // 2. Credentials Login
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const response = await window.fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,9 +66,7 @@ function LoginForm() {
 
       if (data.token) {
         localStorage.setItem('token', data.token);
-        if (setToken) {
-          setToken(data.token);
-        }
+        if (setToken) setToken(data.token);
 
         const targetRedirect = sessionStorage.getItem('authRedirectTarget') || '/profile';
         sessionStorage.removeItem('authRedirectTarget');
@@ -87,7 +79,7 @@ function LoginForm() {
     }
   };
 
-  // 3. GOOGLE OAUTH TRIGGER
+  // 3. Google OAuth Trigger
   const handleGoogleOAuthRedirect = () => {
     window.location.href = `${API_BASE_URL}/auth/google`;
   };
@@ -150,7 +142,7 @@ function LoginForm() {
         <button
           onClick={handleGoogleOAuthRedirect}
           type="button"
-          className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center space-x-2 shadow-xs cursor-pointer focus:outline-none active:scale-[0.98]"
+          className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm cursor-pointer focus:outline-none active:scale-[0.98]"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
@@ -178,7 +170,6 @@ function LoginForm() {
   );
 }
 
-// Default export wrapped in Suspense to resolve Next.js build error
 export default function LoginPage() {
   return (
     <Suspense
