@@ -5,31 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.collegenz.in/api/v1';
 
-interface Post {
-  _id: string;
-  content?: string;
-  caption?: string;
-  text?: string;
-  mediaUrl?: string;
-  imageUrl?: string;
-  createdAt: string;
-  author?: {
-    _id?: string;
-    name?: string;
-    username?: string;
-    avatar?: string;
-    college?: string;
-  };
-  likesCount?: number;
-  commentsCount?: number;
-}
-
 export default function SinglePostPage() {
   const params = useParams();
   const router = useRouter();
   const postId = params?.id as string;
 
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -42,7 +23,7 @@ export default function SinglePostPage() {
       setError(null);
 
       try {
-        const token = localStorage.getItem('token');
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         };
@@ -57,14 +38,16 @@ export default function SinglePostPage() {
 
         if (!response.ok) {
           if (response.status === 404) {
-            throw new Error('This post could not be found or has been removed.');
+            throw new Error('Post not found or has been removed.');
           }
-          throw new Error('Failed to load the requested post.');
+          throw new Error('Failed to load post.');
         }
 
-        const data = await response.json();
-        // Fallback for response wrapper formats (data.post or data.data or raw data)
-        setPost(data.post || data.data || data);
+        const rawData = await response.json();
+        
+        // 🟢 FIX: Handle nested wrapper responses (e.g. { data: ... } or { post: ... })
+        const postData = rawData.data || rawData.post || rawData;
+        setPost(postData);
       } catch (err: any) {
         setError(err.message || 'An unexpected error occurred.');
       } finally {
@@ -83,7 +66,6 @@ export default function SinglePostPage() {
     }
   };
 
-  // 1. LOADING SKELETON
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -96,21 +78,17 @@ export default function SinglePostPage() {
             </div>
           </div>
           <div className="h-4 bg-slate-200 rounded w-full"></div>
-          <div className="h-4 bg-slate-200 rounded w-3/4"></div>
           <div className="h-48 bg-slate-100 rounded-xl w-full"></div>
         </div>
       </div>
     );
   }
 
-  // 2. ERROR / NOT FOUND STATE
   if (error || !post) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center font-sans">
         <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm max-w-sm w-full space-y-4">
-          <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
-            !
-          </div>
+          <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">!</div>
           <h2 className="text-base font-bold text-slate-900">Post Unavailable</h2>
           <p className="text-xs text-slate-500">{error || 'Post not found.'}</p>
           <button
@@ -124,26 +102,31 @@ export default function SinglePostPage() {
     );
   }
 
-  const postContent = post.content || post.caption || post.text;
-  const postMedia = post.mediaUrl || post.imageUrl;
-  const authorName = post.author?.name || post.author?.username || 'CollegenZ User';
-  const authorCollege = post.author?.college || 'CollegenZ Member';
-  const formattedDate = new Date(post.createdAt).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  // 🟢 FIX: Check all common field names for author, content, media, and date
+  const authorObj = post.author || post.user || post.userId || {};
+  const authorName = authorObj.name || authorObj.username || authorObj.fullName || 'CollegenZ User';
+  const authorCollege = authorObj.college || authorObj.institution || 'CollegenZ Member';
+  const authorAvatar = authorObj.avatar || authorObj.profilePicture || authorObj.picture;
 
-  // 3. SUCCESSFUL POST RENDER
+  const postContent = post.content || post.caption || post.text || post.description;
+  const postMedia = post.mediaUrl || post.imageUrl || post.image || (Array.isArray(post.images) ? post.images[0] : null);
+
+  // 🟢 FIX: Safe date formatting to prevent "Invalid Date"
+  const rawDate = post.createdAt || post.created_at || post.date || post.timestamp;
+  const dateObj = rawDate ? new Date(rawDate) : null;
+  const formattedDate = dateObj && !isNaN(dateObj.getTime())
+    ? dateObj.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    : 'Recently';
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans py-8 px-4 flex justify-center">
+    <div className="min-h-screen bg-slate-50 font-sans py-6 px-4 flex justify-center">
       <div className="w-full max-w-lg space-y-4">
         
         {/* Navigation Bar */}
         <div className="flex items-center justify-between pb-2">
           <button
             onClick={() => router.back()}
-            className="flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-xs cursor-pointer transition-all"
+            className="flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-xs cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -162,18 +145,14 @@ export default function SinglePostPage() {
           </button>
         </div>
 
-        {/* Main Post Card */}
+        {/* Post Card */}
         <article className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-6 space-y-4">
           
           {/* Author Header */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm border border-emerald-200">
-              {post.author?.avatar ? (
-                <img
-                  src={post.author.avatar}
-                  alt={authorName}
-                  className="w-full h-full rounded-full object-cover"
-                />
+            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm border border-emerald-200 overflow-hidden shrink-0">
+              {authorAvatar ? (
+                <img src={authorAvatar} alt={authorName} className="w-full h-full object-cover" />
               ) : (
                 authorName.charAt(0).toUpperCase()
               )}
@@ -184,35 +163,25 @@ export default function SinglePostPage() {
             </div>
           </div>
 
-          {/* Post Content */}
+          {/* Post Text */}
           {postContent && (
             <p className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
               {postContent}
             </p>
           )}
 
-          {/* Post Image/Media */}
+          {/* Post Image */}
           {postMedia && (
             <div className="rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
-              <img
-                src={postMedia}
-                alt="Post attachment"
-                className="w-full h-auto max-h-[500px] object-cover"
-              />
+              <img src={postMedia} alt="Post media" className="w-full h-auto max-h-[500px] object-cover" />
             </div>
           )}
 
-          {/* Engagement Footer */}
-          <div className="pt-3 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400">
+          {/* Post Actions */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <div className="flex items-center space-x-4">
-              <span className="flex items-center space-x-1">
-                <span>❤️</span>
-                <span className="font-medium text-slate-600">{post.likesCount || 0} Likes</span>
-              </span>
-              <span className="flex items-center space-x-1">
-                <span>💬</span>
-                <span className="font-medium text-slate-600">{post.commentsCount || 0} Comments</span>
-              </span>
+              <span>❤️ <strong className="text-slate-700">{post.likesCount || post.likes?.length || 0}</strong> Likes</span>
+              <span>💬 <strong className="text-slate-700">{post.commentsCount || post.comments?.length || 0}</strong> Comments</span>
             </div>
           </div>
 
@@ -220,5 +189,4 @@ export default function SinglePostPage() {
       </div>
     </div>
   );
-                  }
-
+}
