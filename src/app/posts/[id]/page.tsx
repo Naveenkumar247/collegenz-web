@@ -1,0 +1,224 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.collegenz.in/api/v1';
+
+interface Post {
+  _id: string;
+  content?: string;
+  caption?: string;
+  text?: string;
+  mediaUrl?: string;
+  imageUrl?: string;
+  createdAt: string;
+  author?: {
+    _id?: string;
+    name?: string;
+    username?: string;
+    avatar?: string;
+    college?: string;
+  };
+  likesCount?: number;
+  commentsCount?: number;
+}
+
+export default function SinglePostPage() {
+  const params = useParams();
+  const router = useRouter();
+  const postId = params?.id as string;
+
+  const [post, setPost] = useState<Post | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!postId) return;
+
+    const fetchPost = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('This post could not be found or has been removed.');
+          }
+          throw new Error('Failed to load the requested post.');
+        }
+
+        const data = await response.json();
+        // Fallback for response wrapper formats (data.post or data.data or raw data)
+        setPost(data.post || data.data || data);
+      } catch (err: any) {
+        setError(err.message || 'An unexpected error occurred.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPost();
+  }, [postId]);
+
+  const handleShare = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // 1. LOADING SKELETON
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-100 p-6 space-y-4 animate-pulse shadow-sm">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-slate-200 rounded-full"></div>
+            <div className="space-y-2 flex-1">
+              <div className="h-3 bg-slate-200 rounded w-1/3"></div>
+              <div className="h-2.5 bg-slate-100 rounded w-1/4"></div>
+            </div>
+          </div>
+          <div className="h-4 bg-slate-200 rounded w-full"></div>
+          <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+          <div className="h-48 bg-slate-100 rounded-xl w-full"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. ERROR / NOT FOUND STATE
+  if (error || !post) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center font-sans">
+        <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm max-w-sm w-full space-y-4">
+          <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
+            !
+          </div>
+          <h2 className="text-base font-bold text-slate-900">Post Unavailable</h2>
+          <p className="text-xs text-slate-500">{error || 'Post not found.'}</p>
+          <button
+            onClick={() => router.push('/')}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-2.5 rounded-xl transition-all cursor-pointer"
+          >
+            Return to Feed
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const postContent = post.content || post.caption || post.text;
+  const postMedia = post.mediaUrl || post.imageUrl;
+  const authorName = post.author?.name || post.author?.username || 'CollegenZ User';
+  const authorCollege = post.author?.college || 'CollegenZ Member';
+  const formattedDate = new Date(post.createdAt).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  // 3. SUCCESSFUL POST RENDER
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans py-8 px-4 flex justify-center">
+      <div className="w-full max-w-lg space-y-4">
+        
+        {/* Navigation Bar */}
+        <div className="flex items-center justify-between pb-2">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-xs cursor-pointer transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Back</span>
+          </button>
+
+          <button
+            onClick={handleShare}
+            className="flex items-center space-x-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-xl border border-emerald-100 transition-all cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684" />
+            </svg>
+            <span>{copied ? 'Link Copied!' : 'Share Post'}</span>
+          </button>
+        </div>
+
+        {/* Main Post Card */}
+        <article className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-6 space-y-4">
+          
+          {/* Author Header */}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm border border-emerald-200">
+              {post.author?.avatar ? (
+                <img
+                  src={post.author.avatar}
+                  alt={authorName}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                authorName.charAt(0).toUpperCase()
+              )}
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 leading-snug">{authorName}</h3>
+              <p className="text-[11px] text-slate-400">{authorCollege} • {formattedDate}</p>
+            </div>
+          </div>
+
+          {/* Post Content */}
+          {postContent && (
+            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              {postContent}
+            </p>
+          )}
+
+          {/* Post Image/Media */}
+          {postMedia && (
+            <div className="rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+              <img
+                src={postMedia}
+                alt="Post attachment"
+                className="w-full h-auto max-h-[500px] object-cover"
+              />
+            </div>
+          )}
+
+          {/* Engagement Footer */}
+          <div className="pt-3 border-t border-slate-50 flex items-center justify-between text-xs text-slate-400">
+            <div className="flex items-center space-x-4">
+              <span className="flex items-center space-x-1">
+                <span>❤️</span>
+                <span className="font-medium text-slate-600">{post.likesCount || 0} Likes</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <span>💬</span>
+                <span className="font-medium text-slate-600">{post.commentsCount || 0} Comments</span>
+              </span>
+            </div>
+          </div>
+
+        </article>
+      </div>
+    </div>
+  );
+                  }
+
