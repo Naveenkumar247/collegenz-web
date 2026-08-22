@@ -45,15 +45,12 @@ export default function SinglePostPage() {
 
         const rawData = await response.json();
         
-        // 🔍 Console log to inspect exact JSON shape in browser console
-        console.log('Single Post API Response:', rawData);
-
-        // Handle nested structure like { data: { post: {...} } } or { data: [...] }
+        // Unwrap nested responses while preserving document root
         let extractedPost = rawData;
-        if (rawData.data?.post) {
+        if (rawData.data?.username || rawData.data?.imageUrl || rawData.data?.data) {
+          extractedPost = rawData.data;
+        } else if (rawData.data?.post) {
           extractedPost = rawData.data.post;
-        } else if (rawData.data) {
-          extractedPost = Array.isArray(rawData.data) ? rawData.data[0] : rawData.data;
         } else if (rawData.post) {
           extractedPost = rawData.post;
         }
@@ -113,21 +110,33 @@ export default function SinglePostPage() {
     );
   }
 
-  // Author resolution handling both populated object and unpopulated string ID
-  const authorObj = typeof post.author === 'object' && post.author !== null 
-    ? post.author 
-    : (typeof post.user === 'object' && post.user !== null ? post.user : {});
+  // --- FIELD RESOLUTION MATCHING YOUR SCHEMA ---
 
-  const authorName = authorObj.name || authorObj.username || authorObj.fullName || post.authorName || 'CollegenZ User';
-  const authorCollege = authorObj.college || authorObj.institution || authorObj.department || 'CollegenZ Member';
-  const authorAvatar = authorObj.avatar || authorObj.profilePicture || authorObj.picture || post.authorAvatar;
+  // 1. Author Details (`username` and populated/unpopulated `userId`)
+  const isUserIdObject = typeof post.userId === 'object' && post.userId !== null;
+  const authorName = post.username || (isUserIdObject ? post.userId.name || post.userId.username : null) || 'CollegenZ User';
+  const authorCollege = (isUserIdObject ? post.userId.college || post.userId.institution : null) || 'CollegenZ Member';
+  const authorAvatar = (isUserIdObject ? post.userId.avatar || post.userId.profilePicture : null) || post.authorAvatar;
 
-  // Body content & Media resolving extended properties
-  const postContent = post.content || post.caption || post.text || post.description || post.body || post.title;
-  const postMedia = post.mediaUrl || post.imageUrl || post.image || post.media || (Array.isArray(post.images) ? post.images[0] : null);
+  // 2. Post Content (`data` field)
+  let postContent: string | null = null;
+  if (typeof post.data === 'string') {
+    postContent = post.data;
+  } else if (typeof post.data === 'object' && post.data !== null) {
+    postContent = post.data.content || post.data.text || post.data.caption || post.data.description || null;
+  } else {
+    postContent = post.content || post.text || null;
+  }
 
-  // Date formatting
-  const rawDate = post.createdAt || post.created_at || post.date || post.timestamp;
+  // 3. Post Media (`imageUrl` field)
+  const postMedia = post.imageUrl || (typeof post.data === 'object' ? post.data?.imageUrl || post.data?.image : null);
+
+  // 4. Engagement Metrics (`likes`, `saves`, `likedBy`, `savedBy`)
+  const likesCount = typeof post.likes === 'number' ? post.likes : (Array.isArray(post.likedBy) ? post.likedBy.length : 0);
+  const savesCount = typeof post.saves === 'number' ? post.saves : (Array.isArray(post.savedBy) ? post.savedBy.length : 0);
+
+  // 5. Date Formatting (`timestamps: true`)
+  const rawDate = post.createdAt || post.created_at || post.timestamp;
   const dateObj = rawDate ? new Date(rawDate) : null;
   const formattedDate = dateObj && !isNaN(dateObj.getTime())
     ? dateObj.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
@@ -137,7 +146,7 @@ export default function SinglePostPage() {
     <div className="min-h-screen bg-slate-50 font-sans py-6 px-4 flex justify-center">
       <div className="w-full max-w-lg space-y-4">
         
-        {/* Navigation Bar */}
+        {/* Top Actions Bar */}
         <div className="flex items-center justify-between pb-2">
           <button
             onClick={() => router.back()}
@@ -163,7 +172,7 @@ export default function SinglePostPage() {
         {/* Post Card */}
         <article className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-6 space-y-4">
           
-          {/* Author Header */}
+          {/* Author Section */}
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm border border-emerald-200 overflow-hidden shrink-0">
               {authorAvatar ? (
@@ -178,28 +187,25 @@ export default function SinglePostPage() {
             </div>
           </div>
 
-          {/* Post Content */}
-          {postContent ? (
+          {/* Text Content */}
+          {postContent && (
             <p className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
               {postContent}
             </p>
-          ) : (
-            /* Fallback debug message if field name is missing */
-            <p className="text-xs text-slate-400 italic">No text content in this post.</p>
           )}
 
-          {/* Post Image */}
+          {/* Image Content */}
           {postMedia && (
             <div className="rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
-              <img src={postMedia} alt="Post media" className="w-full h-auto max-h-[500px] object-cover" />
+              <img src={postMedia} alt="Post attachment" className="w-full h-auto max-h-[500px] object-cover" />
             </div>
           )}
 
-          {/* Post Actions */}
+          {/* Action Counters */}
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <div className="flex items-center space-x-4">
-              <span>❤️ <strong className="text-slate-700">{post.likesCount ?? post.likes?.length ?? 0}</strong> Likes</span>
-              <span>💬 <strong className="text-slate-700">{post.commentsCount ?? post.comments?.length ?? 0}</strong> Comments</span>
+              <span>❤️ <strong className="text-slate-700">{likesCount}</strong> Likes</span>
+              <span>🔖 <strong className="text-slate-700">{savesCount}</strong> Saved</span>
             </div>
           </div>
 
