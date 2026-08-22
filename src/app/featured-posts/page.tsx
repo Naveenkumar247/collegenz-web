@@ -179,9 +179,16 @@ export default function FeaturedPostsPage() {
           ) : (
             <div className="grid gap-3">
               {featuredPosts.map((item) => {
-                const isString = typeof item.postId === 'string';
-                const targetId = isString ? item.postId : item.postId._id;
-                const title = isString ? item.postId : (item.postId.title || 'Untitled Post');
+                let targetId: string;
+                let title: string;
+
+                if (typeof item.postId === 'string') {
+                  targetId = item.postId;
+                  title = item.postId;
+                } else {
+                  targetId = item.postId._id;
+                  title = item.postId.title || 'Untitled Post';
+                }
 
                 return (
                   <div
