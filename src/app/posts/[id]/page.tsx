@@ -47,7 +47,7 @@ export default function SinglePostPage() {
         
         // Unwrap nested API payload structures
         let extractedPost = rawData;
-        if (rawData.data?.username || rawData.data?.imageUrl || rawData.data?.data) {
+        if (rawData.data && typeof rawData.data === 'object' && !Array.isArray(rawData.data) && (rawData.data.username || rawData.data.data)) {
           extractedPost = rawData.data;
         } else if (rawData.data?.post) {
           extractedPost = rawData.data.post;
@@ -119,15 +119,17 @@ export default function SinglePostPage() {
     );
   }
 
-  // --- FIELD RESOLUTION MATCHING SCHEMA & CLOUDINARY ---
+  // --- EXACT FIELD RESOLUTION FROM YOUR MONGODB DOCUMENT ---
 
-  // Author details
+  // 1. Author Details
   const isUserIdObject = typeof post.userId === 'object' && post.userId !== null;
   const authorName = post.username || (isUserIdObject ? post.userId.name || post.userId.username : null) || 'CollegenZ User';
   const authorCollege = (isUserIdObject ? post.userId.college || post.userId.institution : null) || 'CollegenZ Member';
-  const authorAvatar = (isUserIdObject ? post.userId.avatar || post.userId.profilePicture : null) || post.authorAvatar;
+  
+  // Avatar resolves Google profile URL `picture` directly from document
+  const authorAvatar = post.picture || (isUserIdObject ? post.userId.avatar || post.userId.profilePicture : null) || post.authorAvatar;
 
-  // Text Content (`data` field)
+  // 2. Text Content (`data` field)
   let postContent: string | null = null;
   if (typeof post.data === 'string') {
     postContent = post.data;
@@ -137,29 +139,30 @@ export default function SinglePostPage() {
     postContent = post.content || post.text || null;
   }
 
-  // Robust Cloudinary image resolver
+  // 3. Cloudinary Image Resolver matching lowercase `imageurl` and `images` array keys
   const getCloudinaryUrl = (media: any): string | null => {
     if (!media) return null;
     if (typeof media === 'string' && media.trim().length > 0) return media;
     if (Array.isArray(media) && media.length > 0) return getCloudinaryUrl(media[0]);
     if (typeof media === 'object') {
-      return media.secure_url || media.url || media.imageUrl || media.path || null;
+      return media.secure_url || media.url || media.imageUrl || media.imageurl || media.path || null;
     }
     return null;
   };
 
   const postMedia = 
+    getCloudinaryUrl(post.imageurl) ||  // Matches all-lowercase `imageurl` array from DB
+    getCloudinaryUrl(post.images) ||    // Matches `images` array from DB
     getCloudinaryUrl(post.imageUrl) || 
     getCloudinaryUrl(post.data?.imageUrl) || 
-    getCloudinaryUrl(post.data?.secure_url) || 
-    getCloudinaryUrl(post.data?.image) || 
-    getCloudinaryUrl(post.data?.media);
+    getCloudinaryUrl(post.data?.imageurl) || 
+    getCloudinaryUrl(post.data?.image);
 
-  // Engagement Metrics
+  // 4. Engagement Metrics
   const likesCount = typeof post.likes === 'number' ? post.likes : (Array.isArray(post.likedBy) ? post.likedBy.length : 0);
   const savesCount = typeof post.saves === 'number' ? post.saves : (Array.isArray(post.savedBy) ? post.savedBy.length : 0);
 
-  // Date Formatting
+  // 5. Date Formatting
   const rawDate = post.createdAt || post.created_at || post.timestamp;
   const dateObj = rawDate ? new Date(rawDate) : null;
   const formattedDate = dateObj && !isNaN(dateObj.getTime())
@@ -193,7 +196,7 @@ export default function SinglePostPage() {
           </button>
         </div>
 
-        {/* Professional Post Card */}
+        {/* Post Card */}
         <article className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden p-6 space-y-5">
           
           {/* Author Details Header */}
