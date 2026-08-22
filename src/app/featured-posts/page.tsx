@@ -4,11 +4,13 @@ import { useState, useEffect, FormEvent } from 'react';
 
 interface FeaturedPost {
   _id: string;
-  postId: {
-    _id: string;
-    title?: string;
-    content?: string;
-  } | string;
+  postId:
+    | string
+    | {
+        _id: string;
+        title?: string;
+        content?: string;
+      };
   priority: number;
   expiresAt?: string;
   createdAt: string;
@@ -177,9 +179,9 @@ export default function FeaturedPostsPage() {
           ) : (
             <div className="grid gap-3">
               {featuredPosts.map((item) => {
-                const isObject = typeof item.postId === 'object' && item.postId !== null;
-                const targetId = isObject ? item.postId._id : item.postId;
-                const title = isObject ? item.postId.title || 'Untitled Post' : targetId;
+                const isString = typeof item.postId === 'string';
+                const targetId = isString ? item.postId : item.postId._id;
+                const title = isString ? item.postId : (item.postId.title || 'Untitled Post');
 
                 return (
                   <div
@@ -189,9 +191,13 @@ export default function FeaturedPostsPage() {
                     <div className="space-y-1">
                       <p className="font-medium text-slate-200 text-sm">{title}</p>
                       <div className="flex items-center gap-3 text-xs text-slate-400">
-                        <span>ID: <code className="text-slate-300 font-mono">{targetId}</code></span>
+                        <span>
+                          ID: <code className="text-slate-300 font-mono">{targetId}</code>
+                        </span>
                         <span>•</span>
-                        <span>Priority: <strong className="text-blue-400">{item.priority}</strong></span>
+                        <span>
+                          Priority: <strong className="text-blue-400">{item.priority}</strong>
+                        </span>
                         {item.expiresAt && (
                           <>
                             <span>•</span>
