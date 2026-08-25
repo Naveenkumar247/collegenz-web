@@ -10,7 +10,7 @@ export default function FeedPage() {
   const router = useRouter();
   
   const [posts, setPosts] = useState<any[]>([]);
-  const [featuredPosts, setFeaturedPosts] = useState<any[]>([]);
+  const [featuredposts, setFeaturedposts] = useState<any[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   
@@ -49,13 +49,18 @@ export default function FeedPage() {
           authHeaders['Authorization'] = `Bearer ${cleanToken}`;
         }
 
-        // Fetch Featured Posts from updated endpoint
+        // Fetch featuredposts
         const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/featuredposts', {
           headers: authHeaders
         });
+
         if (featuredRes.ok) {
           const featuredData = await featuredRes.json();
-          setFeaturedPosts(Array.isArray(featuredData) ? featuredData : featuredData?.data || []);
+          // Extract array directly, or via .featuredposts / .data keys
+          const list = Array.isArray(featuredData) 
+            ? featuredData 
+            : featuredData?.featuredposts || featuredData?.data || [];
+          setFeaturedposts(list);
         }
 
         // Fetch Feed
@@ -97,13 +102,13 @@ export default function FeedPage() {
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-8 gap-5">
         <main className="col-span-1 lg:col-span-5 space-y-4">
           
-          {featuredPosts.length > 0 && (
+          {featuredposts.length > 0 && (
             <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
               <h2 className="text-xs sm:text-sm font-bold text-slate-800 tracking-wide">
                 Featured Post
               </h2>
               <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none snap-x overflow-y-hidden">
-                {featuredPosts.map((feat: any) => (
+                {featuredposts.map((feat: any) => (
                   <div 
                     key={feat._id} 
                     onClick={() => handlePersonalizedRoute(`/posts/${feat._id || feat.postId?._id || feat.postId}`)}
