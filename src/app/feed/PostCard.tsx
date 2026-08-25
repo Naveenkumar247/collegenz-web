@@ -2,25 +2,43 @@
 
 import React, { useState } from 'react';
 
-export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpdate: any }) {
-  // 1. Image Slider State
+export default function PostCard({ post, onPostUpdate }: { post: any; onPostUpdate: any }) {
+  // Normalize post data if wrapped inside a featured post object
+  const postData = post?.postId && typeof post.postId === 'object' ? post.postId : post;
+  const targetId = typeof post?.postId === 'string' ? post.postId : (postData?._id || post?._id);
+
+  // 1. Image Extraction (Handles arrays, single imageUrl, or image fields)
+  const rawImages = postData?.images || post?.images;
+  const singleImage = postData?.imageUrl || post?.imageUrl || postData?.image || post?.image;
+  
+  const images: string[] = Array.isArray(rawImages) && rawImages.length > 0 
+    ? rawImages 
+    : singleImage 
+      ? [singleImage] 
+      : [];
+
+  // 2. Image Slider State
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
 
-  // 2. Optimistic UI States for instant feedback
-  const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser);
-  const [likesCount, setLikesCount] = useState(post.likesCount || 0);
+  // 3. Optimistic UI States
+  const [isLiked, setIsLiked] = useState(Boolean(postData?.isLikedByCurrentUser ?? post?.isLikedByCurrentUser));
+  const [likesCount, setLikesCount] = useState<number>(postData?.likesCount ?? post?.likesCount ?? 0);
   
-  const [isSaved, setIsSaved] = useState(post.isSavedByCurrentUser);
-  const [savesCount, setSavesCount] = useState(post.savesCount || 0);
+  const [isSaved, setIsSaved] = useState(Boolean(postData?.isSavedByCurrentUser ?? post?.isSavedByCurrentUser));
+  const [savesCount, setSavesCount] = useState<number>(postData?.savesCount ?? post?.savesCount ?? 0);
 
-  // 3. Share Feedback State
+  // 4. Share Feedback State
   const [isCopied, setIsCopied] = useState(false);
-  
-  const images = Array.isArray(post.images) && post.images.length > 0 ? post.images : [];
+
+  // Author & Content Details
+  const author = postData?.author || post?.author;
+  const content = postData?.content || post?.content || post?.caption || post?.description;
+  const postType = postData?.postType || postData?.type || post?.postType || post?.type;
+  const createdAt = postData?.createdAt || post?.createdAt;
 
   // Format the date gracefully
-  const formattedDate = post.createdAt 
-    ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const formattedDate = createdAt 
+    ? new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : '';
 
   // Helper to safely extract and clean the JWT token
@@ -36,29 +54,28 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
   // --- ACTIONS ---
   
   const handleLike = async () => {
+    if (!targetId) return;
     const wasLiked = isLiked;
     const previousCount = likesCount;
     
-    // 1. Instantly update UI (Optimistic)
+    // Instantly update UI (Optimistic)
     setIsLiked(!wasLiked);
     setLikesCount(wasLiked ? previousCount - 1 : previousCount + 1);
 
-    // 2. Sync with backend
     try {
-      const res = await window.fetch(`https://collegenz-api.onrender.com/api/v1/posts/${post._id}/like`, {
+      const res = await window.fetch(`https://collegenz-api.onrender.com/api/v1/posts/${targetId}/like`, {
         method: 'POST',
         headers: getAuthHeaders()
       });
       
       if (!res.ok) {
-        console.error('Server rejected the like request.');
         setIsLiked(wasLiked);
         setLikesCount(previousCount);
         return;
       }
       
       const updatedPost = await res.json();
-      onPostUpdate(updatedPost); 
+      if (onPostUpdate) onPostUpdate(updatedPost); 
     } catch (err) {
       console.error('Network failure during like:', err);
       setIsLiked(wasLiked);
@@ -67,18 +84,17 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
   };
 
   const handleSave = async () => {
+    if (!targetId) return;
     const wasSaved = isSaved;
     const previousCount = savesCount;
     
-    // Instantly update UI
     setIsSaved(!wasSaved);
     setSavesCount(wasSaved ? previousCount - 1 : previousCount + 1);
 
-    // ROUTING LOGIC: Determine if it's an event or regular post
-    const isEvent = post.postType === 'event' || post.type === 'event';
+    const isEvent = postType === 'event';
     const endpoint = isEvent 
-      ? `https://collegenz-api.onrender.com/api/v1/posts/${post._id}/save-event`
-      : `https://collegenz-api.onrender.com/api/v1/posts/${post._id}/save`;
+      ? `https://collegenz-api.onrender.com/api/v1/posts/${targetId}/save-event`
+      : `https://collegenz-api.onrender.com/api/v1/posts/${targetId}/save`;
 
     try {
       const res = await window.fetch(endpoint, {
@@ -87,15 +103,13 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
       });
       
       if (!res.ok) {
-        console.error('Server rejected the save request.');
         setIsSaved(wasSaved);
         setSavesCount(previousCount);
         return;
       }
       
       const updatedPost = await res.json();
-      
-      if (updatedPost._id) {
+      if (updatedPost?._id && onPostUpdate) {
         onPostUpdate(updatedPost);
       }
     } catch (err) {
@@ -106,28 +120,26 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!targetId) return;
 
     const shareUrl = typeof window !== 'undefined' 
-      ? `${window.location.origin}/posts/${post._id}` 
+      ? `${window.location.origin}/posts/${targetId}` 
       : '';
 
     const shareData = {
       title: 'Collegenz Post',
-      text: post.content ? `${post.content.slice(0, 80)}...` : 'Check out this post on Collegenz!',
+      text: content ? `${content.slice(0, 80)}...` : 'Check out this post on Collegenz!',
       url: shareUrl,
     };
 
     try {
-      // 1. Try Native Web Share API (Mobile Devices / Safari / Modern Browsers)
       if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
         await navigator.share(shareData);
       } else if (navigator.clipboard) {
-        // 2. Fallback to Clipboard Copy (Desktop Chrome / Edge / Firefox)
         await navigator.clipboard.writeText(shareUrl);
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
       } else {
-        // 3. Fallback for older browsers
         const textArea = document.createElement('textarea');
         textArea.value = shareUrl;
         document.body.appendChild(textArea);
@@ -138,9 +150,8 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
         setTimeout(() => setIsCopied(false), 2000);
       }
 
-      // 4. Optional backend share counter ping
       try {
-        const res = await window.fetch(`https://collegenz-api.onrender.com/api/v1/posts/${post._id}/share`, {
+        const res = await window.fetch(`https://collegenz-api.onrender.com/api/v1/posts/${targetId}/share`, {
           method: 'POST',
           headers: getAuthHeaders()
         });
@@ -151,42 +162,41 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
           }
         }
       } catch (err) {
-        // Silently catch in case backend endpoint is not implemented
+        // Silently catch in case backend endpoint is omitted
       }
 
     } catch (err: any) {
-      // User cancelled native share dialog
       if (err.name !== 'AbortError') {
         console.error('Error sharing post:', err);
       }
     }
   };
 
-  // Track scroll position to update the "1/2" carousel indicator
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const scrollLeft = e.currentTarget.scrollLeft;
     const width = e.currentTarget.clientWidth;
-    const newIdx = Math.round(scrollLeft / width);
-    setCurrentImageIdx(newIdx);
+    if (width > 0) {
+      const newIdx = Math.round(scrollLeft / width);
+      setCurrentImageIdx(newIdx);
+    }
   };
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl mb-4 overflow-hidden shadow-sm relative">
       
-      {/* 1. Header (Avatar, Name, Date, Options) */}
+      {/* 1. Header (Avatar, Name, Date, Event Badge) */}
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center space-x-3">
           <img 
-            src={post.author?.picture || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
+            src={author?.picture || author?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
             alt="Profile" 
             className="w-10 h-10 rounded-full object-cover border border-slate-100"
             onError={(e) => { e.currentTarget.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'; }}
           />
           <div className="flex flex-col">
             <div className="flex items-center space-x-2">
-              <h3 className="text-sm font-bold text-slate-800 leading-tight">{post.author?.name}</h3>
-              {/* EVENT BADGE */}
-              {(post.postType === 'event' || post.type === 'event') && (
+              <h3 className="text-sm font-bold text-slate-800 leading-tight">{author?.name || 'Collegenz User'}</h3>
+              {postType === 'event' && (
                 <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.5 rounded-md">
                   Event
                 </span>
@@ -218,7 +228,6 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
             ))}
           </div>
           
-          {/* Top-Right Image Counter */}
           {images.length > 1 && (
             <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full z-10 shadow-sm pointer-events-none">
               {currentImageIdx + 1}/{images.length}
@@ -227,16 +236,16 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
         </div>
       )}
 
-      {/* 3. Text Context (Below images) */}
-      {post.content && (
+      {/* 3. Text Context */}
+      {content && (
         <div className="px-4 py-3 pt-4">
           <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
-            {post.content}
+            {content}
           </p>
         </div>
       )}
 
-      {/* 4. Action Bar (At the bottom) */}
+      {/* 4. Action Bar */}
       <div className="px-4 py-3 flex items-center justify-between border-t border-slate-100 bg-white">
         <div className="flex items-center space-x-6">
           
@@ -250,7 +259,7 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
             </span>
           </button>
 
-          {/* Share Button with Handlers & Feedback */}
+          {/* Share Button */}
           <button 
             onClick={handleShare}
             className="flex items-center space-x-1.5 text-slate-500 hover:text-slate-700 transition-transform active:scale-95"
@@ -279,7 +288,7 @@ export default function PostCard({ post, onPostUpdate }: { post: any, onPostUpda
         <button 
           onClick={handleSave} 
           className="flex items-center space-x-1 text-slate-500 hover:text-slate-700 transition-transform active:scale-95"
-          title={post.postType === 'event' || post.type === 'event' ? "Save Event" : "Save Post"}
+          title={postType === 'event' ? "Save Event" : "Save Post"}
         >
           <svg className={`w-6 h-6 transition-colors ${isSaved ? 'text-emerald-600 fill-emerald-600' : 'fill-transparent'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
