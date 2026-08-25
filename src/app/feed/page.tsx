@@ -49,13 +49,13 @@ export default function FeedPage() {
           authHeaders['Authorization'] = `Bearer ${cleanToken}`;
         }
 
-        // Fetch Featured
-        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/featured', {
+        // Fetch Featured Posts from updated endpoint
+        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/featuredposts', {
           headers: authHeaders
         });
         if (featuredRes.ok) {
           const featuredData = await featuredRes.json();
-          setFeaturedPosts(Array.isArray(featuredData) ? featuredData : []);
+          setFeaturedPosts(Array.isArray(featuredData) ? featuredData : featuredData?.data || []);
         }
 
         // Fetch Feed
@@ -64,7 +64,7 @@ export default function FeedPage() {
         });
         if (feedRes.ok) {
           const feedData = await feedRes.json();
-          setPosts(Array.isArray(feedData) ? feedData : []);
+          setPosts(Array.isArray(feedData) ? feedData : feedData?.data || []);
         }
       } catch (err) {
         console.error('Data pool connection failed:', err);
@@ -106,18 +106,18 @@ export default function FeedPage() {
                 {featuredPosts.map((feat: any) => (
                   <div 
                     key={feat._id} 
-                    onClick={() => handlePersonalizedRoute(`/posts/${feat._id}`)}
+                    onClick={() => handlePersonalizedRoute(`/posts/${feat._id || feat.postId?._id || feat.postId}`)}
                     className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm cursor-pointer"
-                    style={{ backgroundImage: `url(${feat.images?.[0] || feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
+                    style={{ backgroundImage: `url(${feat.images?.[0] || feat.postId?.imageUrl || feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/20 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10 max-w-[90%]">
                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20" />
-                      <span className="text-[8px] text-white font-medium truncate">{feat.author?.name || 'User'}</span>
+                      <span className="text-[8px] text-white font-medium truncate">{feat.author?.name || feat.postId?.author?.name || 'User'}</span>
                     </div>
                     <div className="absolute bottom-2 inset-x-2">
                       <p className="text-[9px] sm:text-[10px] text-white font-semibold line-clamp-2 leading-snug">
-                        {feat.content || feat.caption}
+                        {feat.content || feat.caption || feat.description || feat.postId?.title}
                       </p>
                     </div>
                   </div>
