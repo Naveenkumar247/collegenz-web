@@ -14,7 +14,7 @@ export default function FeedPage() {
   const [feedLoading, setFeedLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   
-  const hasFetched = useRef(false);
+  const isFetchingRef = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -34,8 +34,8 @@ export default function FeedPage() {
     if (!isMounted) return;
 
     const loadDataPools = async () => {
-      if (hasFetched.current) return;
-      hasFetched.current = true;
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
       setFeedLoading(true);
       
       try {
@@ -56,10 +56,10 @@ export default function FeedPage() {
 
         if (featuredRes.ok) {
           const featuredData = await featuredRes.json();
-          // Extract array directly, or via .featuredposts / .data keys
+          // Extract array safely across multiple API wrapper structures
           const list = Array.isArray(featuredData) 
             ? featuredData 
-            : featuredData?.featuredposts || featuredData?.data || [];
+            : featuredData?.featuredposts || featuredData?.data || featuredData?.posts || featuredData?.result || [];
           setFeaturedposts(list);
         }
 
@@ -67,14 +67,19 @@ export default function FeedPage() {
         const feedRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/feed', {
           headers: authHeaders
         });
+
         if (feedRes.ok) {
           const feedData = await feedRes.json();
-          setPosts(Array.isArray(feedData) ? feedData : feedData?.data || []);
+          const feedList = Array.isArray(feedData) 
+            ? feedData 
+            : feedData?.posts || feedData?.data || [];
+          setPosts(feedList);
         }
       } catch (err) {
         console.error('Data pool connection failed:', err);
       } finally {
         setFeedLoading(false);
+        isFetchingRef.current = false;
       }
     };
 
@@ -108,25 +113,33 @@ export default function FeedPage() {
                 Featured Post
               </h2>
               <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none snap-x overflow-y-hidden">
-                {featuredposts.map((feat: any) => (
-                  <div 
-                    key={feat._id} 
-                    onClick={() => handlePersonalizedRoute(`/posts/${feat._id || feat.postId?._id || feat.postId}`)}
-                    className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm cursor-pointer"
-                    style={{ backgroundImage: `url(${feat.images?.[0] || feat.postId?.imageUrl || feat.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'})` }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/20 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10 max-w-[90%]">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20" />
-                      <span className="text-[8px] text-white font-medium truncate">{feat.author?.name || feat.postId?.author?.name || 'User'}</span>
+                {featuredposts.map((feat: any) => {
+                  // Resolve post reference / nested properties
+                  const targetPostId = feat.postId?._id || (typeof feat.postId === 'string' ? feat.postId : feat._id);
+                  const imageUrl = feat.images?.[0] || feat.image || feat.postId?.images?.[0] || feat.postId?.imageUrl || feat.postId?.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe';
+                  const authorName = feat.author?.name || feat.postId?.author?.name || 'User';
+                  const postContent = feat.content || feat.caption || feat.description || feat.postId?.content || feat.postId?.title || 'Featured';
+
+                  return (
+                    <div 
+                      key={feat._id} 
+                      onClick={() => handlePersonalizedRoute(`/posts/${targetPostId}`)}
+                      className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm cursor-pointer"
+                      style={{ backgroundImage: `url(${imageUrl})` }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                      <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/20 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10 max-w-[90%]">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20" />
+                        <span className="text-[8px] text-white font-medium truncate">{authorName}</span>
+                      </div>
+                      <div className="absolute bottom-2 inset-x-2">
+                        <p className="text-[9px] sm:text-[10px] text-white font-semibold line-clamp-2 leading-snug">
+                          {postContent}
+                        </p>
+                      </div>
                     </div>
-                    <div className="absolute bottom-2 inset-x-2">
-                      <p className="text-[9px] sm:text-[10px] text-white font-semibold line-clamp-2 leading-snug">
-                        {feat.content || feat.caption || feat.description || feat.postId?.title}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
