@@ -5,6 +5,12 @@ import PostCard from './PostCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || 
+  process.env.NEXT_PUBLIC_URL || 
+  'https://api.collegenz.in/api/v1'
+).replace(/\/$/, '');
+
 export default function FeedPage() {
   const { isAuthenticated, setToken } = useAuthStore((state: any) => state);
   const router = useRouter();
@@ -44,13 +50,15 @@ export default function FeedPage() {
           ? backupToken.slice(1, -1) 
           : backupToken;
 
-        const authHeaders: Record<string, string> = {};
+        const authHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
         if (cleanToken) {
           authHeaders['Authorization'] = `Bearer ${cleanToken}`;
         }
 
-        // Fetch featuredposts
-        const featuredRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/featuredposts', {
+        // Fetch featuredposts dynamically
+        const featuredRes = await fetch(`${API_BASE_URL}/featuredposts`, {
           headers: authHeaders
         });
 
@@ -62,8 +70,8 @@ export default function FeedPage() {
           setFeaturedposts(list);
         }
 
-        // Fetch Feed
-        const feedRes = await window.fetch('https://collegenz-api.onrender.com/api/v1/posts/feed', {
+        // Fetch Feed dynamically
+        const feedRes = await fetch(`${API_BASE_URL}/posts/feed`, {
           headers: authHeaders
         });
 
@@ -121,7 +129,6 @@ export default function FeedPage() {
 
             <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none snap-x overflow-y-hidden">
               {feedLoading ? (
-                // Horizontal Skeleton Cards during loading state
                 [1, 2, 3].map((skeletonIndex) => (
                   <div
                     key={skeletonIndex}
@@ -156,7 +163,6 @@ export default function FeedPage() {
                   );
                 })
               ) : (
-                // Empty Layout Placeholder Box
                 <div className="w-full flex flex-col items-center justify-center py-6 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 space-y-1">
                   <span className="text-xs font-medium text-slate-500">No active featured posts</span>
                   <span className="text-[10px] text-slate-400">Check back later for highlighted announcements</span>
@@ -223,4 +229,3 @@ export default function FeedPage() {
     </div>
   );
 }
-
