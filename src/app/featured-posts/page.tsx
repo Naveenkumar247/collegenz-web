@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface FeaturedPost {
   _id: string;
@@ -15,9 +16,13 @@ interface FeaturedPost {
   priority?: number;
   expiresAt?: string;
   createdAt?: string;
+  images?: string[];
+  description?: string;
 }
 
 export default function FeaturedPostsPage() {
+  const { isAuthenticated } = useAuthStore((state: any) => state);
+
   const [postId, setPostId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -29,21 +34,27 @@ export default function FeaturedPostsPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://collegenz-api.onrender.com';
+  const API_ENDPOINT = `${BASE_URL.replace(/\/$/, '')}/api/v1/featuredposts`;
+
+  const getAuthHeaders = (): Record<string, string> => {
+    const rawToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!rawToken) return {};
+    const cleanToken = rawToken.startsWith('"') && rawToken.endsWith('"') ? rawToken.slice(1, -1) : rawToken;
+    return { Authorization: `Bearer ${cleanToken}` };
+  };
 
   const fetchFeaturedPosts = async () => {
     try {
-      const res = await fetch(`${API_URL}/featured-posts`);
+      const res = await fetch(API_ENDPOINT, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
-        // Defensive check: Ensure data is an array before setting state
-        if (Array.isArray(data)) {
-          setFeaturedPosts(data);
-        } else if (data && Array.isArray(data.data)) {
-          setFeaturedPosts(data.data);
-        } else {
-          setFeaturedPosts([]);
-        }
+        const list = Array.isArray(data)
+          ? data
+          : data?.featuredposts || data?.data || data?.posts || [];
+        setFeaturedPosts(list);
       } else {
         setFeaturedPosts([]);
       }
@@ -56,6 +67,11 @@ export default function FeaturedPostsPage() {
   useEffect(() => {
     fetchFeaturedPosts();
   }, []);
+
+  const clearPreviews = () => {
+    filePreviews.forEach((url) => URL.revokeObjectURL(url));
+    setFilePreviews([]);
+  };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -92,8 +108,9 @@ export default function FeaturedPostsPage() {
         formData.append('images', file);
       });
 
-      const res = await fetch(`${API_URL}/featured-posts`, {
+      const res = await fetch(API_ENDPOINT, {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData,
       });
 
@@ -110,7 +127,7 @@ export default function FeaturedPostsPage() {
       setPriority(0);
       setExpiresAt('');
       setSelectedFiles([]);
-      setFilePreviews([]);
+      clearPreviews();
       fetchFeaturedPosts();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Something went wrong' });
@@ -119,14 +136,17 @@ export default function FeaturedPostsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (featuredPostId: string) => {
     try {
-      const res = await fetch(`${API_URL}/featured-posts/${id}`, {
+      const res = await fetch(`${API_ENDPOINT}/${featuredPostId}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
       });
 
       if (res.ok) {
         fetchFeaturedPosts();
+      } else {
+        console.error('Failed to remove featured post');
       }
     } catch (err) {
       console.error('Failed to remove featured post', err);
@@ -134,7 +154,7 @@ export default function FeaturedPostsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12 font-sans">
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
@@ -264,27 +284,28 @@ export default function FeaturedPostsPage() {
               {featuredPosts.map((item) => {
                 if (!item) return null;
 
-                let targetId: string = item._id || 'N/A';
-                let titleText: string = 'Featured Item';
+                const documentId = item._id;
+                let displayTitle: string = 'Featured Item';
+                let rawPostId: string = 'N/A';
 
                 if (typeof item.postId === 'string') {
-                  targetId = item.postId;
-                  titleText = item.postId;
+                  rawPostId = item.postId;
+                  displayTitle = item.postId;
                 } else if (item.postId && typeof item.postId === 'object') {
-                  targetId = item.postId._id || item._id;
-                  titleText = item.postId.title || 'Featured Banner';
+                  rawPostId = item.postId._id || 'N/A';
+                  displayTitle = item.postId.title || item.postId.content || 'Featured Banner';
                 }
 
                 return (
                   <div
-                    key={item._id || Math.random()}
+                    key={documentId || Math.random()}
                     className="flex items-center justify-between p-4 bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-xl hover:border-slate-700/80 transition-all"
                   >
                     <div className="space-y-1">
-                      <p className="font-medium text-slate-200 text-sm">{titleText}</p>
+                      <p className="font-medium text-slate-200 text-sm line-clamp-1">{displayTitle}</p>
                       <div className="flex items-center gap-3 text-xs text-slate-400">
                         <span>
-                          ID: <code className="text-slate-300 font-mono">{targetId}</code>
+                          Ref Post ID: <code className="text-slate-300 font-mono">{rawPostId}</code>
                         </span>
                         <span>•</span>
                         <span>
@@ -300,7 +321,7 @@ export default function FeaturedPostsPage() {
                     </div>
 
                     <button
-                      onClick={() => handleDelete(targetId)}
+                      onClick={() => handleDelete(documentId)}
                       className="px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 hover:border-rose-500/30 rounded-lg transition-all"
                     >
                       Unfeature
