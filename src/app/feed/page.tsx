@@ -56,7 +56,6 @@ export default function FeedPage() {
 
         if (featuredRes.ok) {
           const featuredData = await featuredRes.json();
-          // Extract array safely across multiple API wrapper structures
           const list = Array.isArray(featuredData) 
             ? featuredData 
             : featuredData?.featuredposts || featuredData?.data || featuredData?.posts || featuredData?.result || [];
@@ -107,14 +106,30 @@ export default function FeedPage() {
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-8 gap-5">
         <main className="col-span-1 lg:col-span-5 space-y-4">
           
-          {featuredposts.length > 0 && (
-            <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
+          {/* Always Rendered Featured Posts Section */}
+          <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
+            <div className="flex items-center justify-between">
               <h2 className="text-xs sm:text-sm font-bold text-slate-800 tracking-wide">
                 Featured Post
               </h2>
-              <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none snap-x overflow-y-hidden">
-                {featuredposts.map((feat: any) => {
-                  // Resolve post reference / nested properties
+              {featuredposts.length > 0 && (
+                <span className="text-[10px] font-medium text-slate-400">
+                  {featuredposts.length} available
+                </span>
+              )}
+            </div>
+
+            <div className="flex space-x-3 overflow-x-auto pb-1 scrollbar-none snap-x overflow-y-hidden">
+              {feedLoading ? (
+                // Horizontal Skeleton Cards during loading state
+                [1, 2, 3].map((skeletonIndex) => (
+                  <div
+                    key={skeletonIndex}
+                    className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl bg-slate-100 border border-slate-200/60 animate-pulse"
+                  />
+                ))
+              ) : featuredposts.length > 0 ? (
+                featuredposts.map((feat: any) => {
                   const targetPostId = feat.postId?._id || (typeof feat.postId === 'string' ? feat.postId : feat._id);
                   const imageUrl = feat.images?.[0] || feat.image || feat.postId?.images?.[0] || feat.postId?.imageUrl || feat.postId?.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe';
                   const authorName = feat.author?.name || feat.postId?.author?.name || 'User';
@@ -124,7 +139,7 @@ export default function FeedPage() {
                     <div 
                       key={feat._id} 
                       onClick={() => handlePersonalizedRoute(`/posts/${targetPostId}`)}
-                      className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm cursor-pointer"
+                      className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm cursor-pointer transition-transform hover:scale-[1.02]"
                       style={{ backgroundImage: `url(${imageUrl})` }}
                     >
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -139,10 +154,16 @@ export default function FeedPage() {
                       </div>
                     </div>
                   );
-                })}
-              </div>
+                })
+              ) : (
+                // Empty Layout Placeholder Box
+                <div className="w-full flex flex-col items-center justify-center py-6 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 space-y-1">
+                  <span className="text-xs font-medium text-slate-500">No active featured posts</span>
+                  <span className="text-[10px] text-slate-400">Check back later for highlighted announcements</span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="space-y-4">
             {feedLoading ? (
@@ -202,3 +223,4 @@ export default function FeedPage() {
     </div>
   );
 }
+
