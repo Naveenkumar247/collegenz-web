@@ -34,7 +34,7 @@ export default function FeaturedPostsPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://collegenz-api.onrender.com';
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.collegenz.in';
   const API_ENDPOINT = `${BASE_URL.replace(/\/$/, '')}/featuredposts`;
 
   const getAuthHeaders = (): Record<string, string> => {
