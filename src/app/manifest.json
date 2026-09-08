@@ -1,21 +1,19 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "CollegenZ – AI-Powered Student Platform",
+  "short_name": "CollegenZ",
+  "description": "An AI-powered student platform to connect, learn, discover opportunities, and grow.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#228B22",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/src/app/favicon.ico/web-app-manifest-192x192.png",
+      "src": "/icon1.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/src/app/favicon.ico/web-app-manifest-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
-  ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  ]
 }
