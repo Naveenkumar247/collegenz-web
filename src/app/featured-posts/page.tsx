@@ -6,45 +6,34 @@ import {
   FormEvent,
   ChangeEvent,
 } from 'react';
-import { useAuthStore } from '@/store/useAuthStore';
-
-interface FeaturedPostData {
-  _id?: string;
-  data?: any;
-  imageUrl?: any;
-  username?: string;
-  postType?: string;
-}
 
 interface FeaturedPost {
   _id: string;
-
-  postId?:
-    | string
-    | FeaturedPostData;
-
+  title: string;
+  description?: string;
+  images?: string[];
   priority?: number;
   expiresAt?: string;
   createdAt?: string;
-
-  images?: string[];
-  description?: string;
 }
 
 export default function FeaturedPostsPage() {
-  const { isAuthenticated } = useAuthStore(
-    (state: any) => state
-  );
-
-  const [postId, setPostId] = useState('');
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<number>(0);
   const [expiresAt, setExpiresAt] = useState('');
 
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [filePreviews, setFilePreviews] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>(
+    [],
+  );
 
-  const [featuredPosts, setFeaturedPosts] = useState<FeaturedPost[]>([]);
+  const [filePreviews, setFilePreviews] = useState<string[]>(
+    [],
+  );
+
+  const [featuredPosts, setFeaturedPosts] = useState<
+    FeaturedPost[]
+  >([]);
 
   const [loading, setLoading] = useState(false);
   const [fetchingPosts, setFetchingPosts] = useState(true);
@@ -55,17 +44,9 @@ export default function FeaturedPostsPage() {
   } | null>(null);
 
   /*
-   * IMPORTANT:
-   * NestJS main.ts:
-   *
-   * app.setGlobalPrefix('api');
-   * app.enableVersioning({
-   *   type: VersioningType.URI,
-   *   defaultVersion: '1',
-   * });
-   *
-   * Therefore production API is:
-   * https://api.collegenz.in/api/v1
+   * ============================================================
+   * API CONFIGURATION
+   * ============================================================
    */
 
   const BASE_URL = (
@@ -76,8 +57,11 @@ export default function FeaturedPostsPage() {
   const API_ENDPOINT = `${BASE_URL}/featuredposts`;
 
   /*
-   * Get authentication token
+   * ============================================================
+   * AUTH HEADERS
+   * ============================================================
    */
+
   const getAuthHeaders = (): Record<string, string> => {
     if (typeof window === 'undefined') {
       return {};
@@ -101,8 +85,11 @@ export default function FeaturedPostsPage() {
   };
 
   /*
-   * Fetch active featured posts
+   * ============================================================
+   * FETCH FEATURED POSTS
+   * ============================================================
    */
+
   const fetchFeaturedPosts = async () => {
     setFetchingPosts(true);
 
@@ -124,7 +111,7 @@ export default function FeaturedPostsPage() {
       if (!res.ok) {
         throw new Error(
           data?.message ||
-            `Failed to fetch featured posts (${res.status})`
+            `Failed to fetch featured posts (${res.status})`,
         );
       }
 
@@ -137,12 +124,12 @@ export default function FeaturedPostsPage() {
           [];
 
       setFeaturedPosts(
-        Array.isArray(list) ? list : []
+        Array.isArray(list) ? list : [],
       );
     } catch (err: any) {
       console.error(
         'Failed to fetch featured posts:',
-        err
+        err,
       );
 
       setFeaturedPosts([]);
@@ -159,15 +146,21 @@ export default function FeaturedPostsPage() {
   };
 
   /*
-   * Initial load
+   * ============================================================
+   * INITIAL LOAD
+   * ============================================================
    */
+
   useEffect(() => {
     fetchFeaturedPosts();
   }, []);
 
   /*
-   * Revoke preview URLs
+   * ============================================================
+   * CLEAR PREVIEWS
+   * ============================================================
    */
+
   const clearPreviews = () => {
     filePreviews.forEach((url) => {
       URL.revokeObjectURL(url);
@@ -177,10 +170,13 @@ export default function FeaturedPostsPage() {
   };
 
   /*
-   * File selection
+   * ============================================================
+   * FILE SELECTION
+   * ============================================================
    */
+
   const handleFileChange = (
-    e: ChangeEvent<HTMLInputElement>
+    e: ChangeEvent<HTMLInputElement>,
   ) => {
     if (!e.target.files) {
       return;
@@ -194,7 +190,7 @@ export default function FeaturedPostsPage() {
     ]);
 
     const previews = filesArray.map((file) =>
-      URL.createObjectURL(file)
+      URL.createObjectURL(file),
     );
 
     setFilePreviews((prev) => [
@@ -202,16 +198,19 @@ export default function FeaturedPostsPage() {
       ...previews,
     ]);
 
-    // Allows selecting the same file again later
+    // Allow selecting the same file again
     e.target.value = '';
   };
 
   /*
-   * Remove selected image
+   * ============================================================
+   * REMOVE SELECTED IMAGE
+   * ============================================================
    */
+
   const removeFile = (index: number) => {
     setSelectedFiles((prev) =>
-      prev.filter((_, i) => i !== index)
+      prev.filter((_, i) => i !== index),
     );
 
     setFilePreviews((prev) => {
@@ -224,17 +223,20 @@ export default function FeaturedPostsPage() {
   };
 
   /*
-   * Create featured post
+   * ============================================================
+   * CREATE FEATURED POST
+   * ============================================================
    */
+
   const handleSubmit = async (
-    e: FormEvent
+    e: FormEvent,
   ) => {
     e.preventDefault();
 
-    if (!postId.trim()) {
+    if (!title.trim()) {
       setMessage({
         type: 'error',
-        text: 'Please enter a Post ID.',
+        text: 'Please enter a title.',
       });
 
       return;
@@ -247,66 +249,66 @@ export default function FeaturedPostsPage() {
       const formData = new FormData();
 
       /*
-       * DTO field
+       * Required DTO field
        */
       formData.append(
-        'postId',
-        postId.trim()
+        'title',
+        title.trim(),
       );
 
       /*
-       * DTO field
+       * Optional DTO field
        */
       if (description.trim()) {
         formData.append(
           'description',
-          description.trim()
+          description.trim(),
         );
       }
 
       /*
-       * DTO field
+       * Optional DTO field
        */
       formData.append(
         'priority',
-        String(priority)
+        String(priority),
       );
 
       /*
-       * DTO field
+       * Optional DTO field
        */
       if (expiresAt) {
         formData.append(
           'expiresAt',
           new Date(
-            expiresAt
-          ).toISOString()
+            expiresAt,
+          ).toISOString(),
         );
       }
 
       /*
-       * UploadedFiles field
+       * Images
        *
        * Must match:
-       * FilesInterceptor('images')
+       * FilesInterceptor('images', 10)
        */
       selectedFiles.forEach((file) => {
         formData.append(
           'images',
-          file
+          file,
         );
       });
 
       console.log(
-        'Creating featured post:',
+        'Creating independent featured post:',
         {
           endpoint: API_ENDPOINT,
-          postId,
+          title,
           priority,
           expiresAt,
           imageCount:
             selectedFiles.length,
-        }
+        },
       );
 
       const res = await fetch(
@@ -315,7 +317,7 @@ export default function FeaturedPostsPage() {
           method: 'POST',
           headers: getAuthHeaders(),
           body: formData,
-        }
+        },
       );
 
       const data =
@@ -326,13 +328,13 @@ export default function FeaturedPostsPage() {
         {
           status: res.status,
           data,
-        }
+        },
       );
 
       if (!res.ok) {
         throw new Error(
           data?.message ||
-            `Failed to add featured post (${res.status})`
+            `Failed to add featured post (${res.status})`,
         );
       }
 
@@ -345,12 +347,10 @@ export default function FeaturedPostsPage() {
       /*
        * Reset form
        */
-      setPostId('');
+      setTitle('');
       setDescription('');
       setPriority(0);
       setExpiresAt('');
-
-      selectedFiles.forEach(() => {});
 
       clearPreviews();
       setSelectedFiles([]);
@@ -362,7 +362,7 @@ export default function FeaturedPostsPage() {
     } catch (err: any) {
       console.error(
         'Create featured post failed:',
-        err
+        err,
       );
 
       setMessage({
@@ -377,10 +377,13 @@ export default function FeaturedPostsPage() {
   };
 
   /*
-   * Delete / Unfeature
+   * ============================================================
+   * DELETE / UNFEATURE
+   * ============================================================
    */
+
   const handleDelete = async (
-    featuredPostId: string
+    featuredPostId: string,
   ) => {
     if (!featuredPostId) {
       return;
@@ -388,7 +391,7 @@ export default function FeaturedPostsPage() {
 
     const confirmed =
       window.confirm(
-        'Are you sure you want to remove this featured post?'
+        'Are you sure you want to remove this featured post?',
       );
 
     if (!confirmed) {
@@ -401,7 +404,7 @@ export default function FeaturedPostsPage() {
         {
           method: 'DELETE',
           headers: getAuthHeaders(),
-        }
+        },
       );
 
       const data =
@@ -412,13 +415,13 @@ export default function FeaturedPostsPage() {
         {
           status: res.status,
           data,
-        }
+        },
       );
 
       if (!res.ok) {
         throw new Error(
           data?.message ||
-            `Failed to remove featured post (${res.status})`
+            `Failed to remove featured post (${res.status})`,
         );
       }
 
@@ -432,7 +435,7 @@ export default function FeaturedPostsPage() {
     } catch (err: any) {
       console.error(
         'Failed to remove featured post:',
-        err
+        err,
       );
 
       setMessage({
@@ -445,63 +448,10 @@ export default function FeaturedPostsPage() {
   };
 
   /*
-   * Extract display information from populated post
+   * ============================================================
+   * UI
+   * ============================================================
    */
-  const getPostDisplay = (
-    item: FeaturedPost
-  ) => {
-    const post = item.postId;
-
-    if (!post) {
-      return {
-        postId: 'N/A',
-        username: 'User',
-        content: 'Featured Post',
-        image: item.images?.[0] || '',
-      };
-    }
-
-    if (typeof post === 'string') {
-      return {
-        postId: post,
-        username: 'User',
-        content: item.description || 'Featured Post',
-        image: item.images?.[0] || '',
-      };
-    }
-
-    let content = '';
-
-    if (typeof post.data === 'string') {
-      content = post.data;
-    } else if (
-      post.data &&
-      typeof post.data === 'object'
-    ) {
-      content =
-        post.data.content ||
-        post.data.caption ||
-        post.data.title ||
-        '';
-    }
-
-    return {
-      postId: post._id || 'N/A',
-      username:
-        post.username || 'User',
-      content:
-        item.description ||
-        content ||
-        'Featured Post',
-      image:
-        item.images?.[0] ||
-        (Array.isArray(post.imageUrl)
-          ? post.imageUrl[0]
-          : typeof post.imageUrl === 'string'
-          ? post.imageUrl
-          : ''),
-    };
-  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12 font-sans">
@@ -514,9 +464,8 @@ export default function FeaturedPostsPage() {
           </h1>
 
           <p className="text-slate-400 text-sm mt-1">
-            Pin important posts to the top of the
-            feed with custom priority and expiry
-            dates.
+            Create independent featured content with custom
+            images, priority, and expiry dates.
           </p>
         </div>
 
@@ -528,19 +477,19 @@ export default function FeaturedPostsPage() {
             className="space-y-4"
           >
 
-            {/* Post ID */}
+            {/* Title */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                Post ID
+                Title
               </label>
 
               <input
                 type="text"
-                value={postId}
+                value={title}
                 onChange={(e) =>
-                  setPostId(e.target.value)
+                  setTitle(e.target.value)
                 }
-                placeholder="65e123456789abcdef012345"
+                placeholder="Enter featured post title"
                 required
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
               />
@@ -601,7 +550,7 @@ export default function FeaturedPostsPage() {
                           ✕
                         </button>
                       </div>
-                    )
+                    ),
                   )}
                 </div>
               )}
@@ -621,11 +570,11 @@ export default function FeaturedPostsPage() {
                   value={priority}
                   onChange={(e) =>
                     setPriority(
-                      Number(e.target.value)
+                      Number(e.target.value),
                     )
                   }
                   min={0}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
                 />
               </div>
 
@@ -640,10 +589,10 @@ export default function FeaturedPostsPage() {
                   value={expiresAt}
                   onChange={(e) =>
                     setExpiresAt(
-                      e.target.value
+                      e.target.value,
                     )
                   }
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm [color-scheme:dark]"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm [color-scheme:dark]"
                 />
               </div>
 
@@ -653,8 +602,7 @@ export default function FeaturedPostsPage() {
             {message && (
               <div
                 className={`p-3 rounded-xl text-sm ${
-                  message.type ===
-                  'success'
+                  message.type === 'success'
                     ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
                     : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
                 }`}
@@ -696,123 +644,91 @@ export default function FeaturedPostsPage() {
             <div className="grid gap-3">
 
               {featuredPosts.map(
-                (item) => {
-                  if (!item?._id) {
-                    return null;
-                  }
+                (item) => (
+                  <div
+                    key={item._id}
+                    className="flex items-center justify-between gap-4 p-4 bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-xl hover:border-slate-700/80 transition-all"
+                  >
 
-                  const display =
-                    getPostDisplay(item);
+                    {/* Left */}
+                    <div className="flex items-center gap-3 min-w-0">
 
-                  return (
-                    <div
-                      key={item._id}
-                      className="flex items-center justify-between gap-4 p-4 bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-xl hover:border-slate-700/80 transition-all"
-                    >
+                      {/* Image */}
+                      {item.images?.[0] ? (
+                        <img
+                          src={item.images[0]}
+                          alt={item.title}
+                          className="w-14 h-14 rounded-xl object-cover border border-slate-700 flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 text-xs flex-shrink-0">
+                          No Image
+                        </div>
+                      )}
 
-                      {/* Left */}
-                      <div className="flex items-center gap-3 min-w-0">
+                      {/* Details */}
+                      <div className="space-y-1 min-w-0">
 
-                        {/* Image */}
-                        {display.image ? (
-                          <img
-                            src={display.image}
-                            alt="Featured"
-                            className="w-14 h-14 rounded-xl object-cover border border-slate-700 flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 text-xs flex-shrink-0">
-                            No Image
-                          </div>
+                        <p className="font-medium text-slate-200 text-sm line-clamp-1">
+                          {item.title}
+                        </p>
+
+                        {item.description && (
+                          <p className="text-xs text-slate-400 line-clamp-1">
+                            {item.description}
+                          </p>
                         )}
 
-                        {/* Details */}
-                        <div className="space-y-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
 
-                          <p className="font-medium text-slate-200 text-sm line-clamp-1">
-                            {display.content}
-                          </p>
+                          <span>
+                            Priority:{' '}
+                            <strong className="text-blue-400">
+                              {item.priority ?? 0}
+                            </strong>
+                          </span>
 
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                          {item.expiresAt && (
+                            <>
+                              <span>•</span>
 
-                            <span>
-                              Post ID:
-                              {' '}
-                              <code className="text-slate-300 font-mono">
-                                {display.postId}
-                              </code>
-                            </span>
-
-                            <span>•</span>
-
-                            <span>
-                              Priority:
-                              {' '}
-                              <strong className="text-blue-400">
-                                {item.priority ?? 0}
-                              </strong>
-                            </span>
-
-                            {item.expiresAt && (
-                              <>
-                                <span>•</span>
-
-                                <span>
-                                  Expires:{' '}
-                                  {new Date(
-                                    item.expiresAt
-                                  ).toLocaleString()}
-                                </span>
-                              </>
-                            )}
-
-                          </div>
+                              <span>
+                                Expires:{' '}
+                                {new Date(
+                                  item.expiresAt,
+                                ).toLocaleString()}
+                              </span>
+                            </>
+                          )}
 
                         </div>
+
                       </div>
+                    </div>
 
-                      {/* Delete */}
+                    {/* Delete */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDelete(
+                          item._id,
+                        )
+                      }
+                      className="px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 hover:border-rose-500/30 rounded-lg transition-all flex-shrink-0"
+                    >
+                      Unfeature
+                    </button>
 
-<button
+                  </div>
+                ),
+              )}
 
-type="button" onClick={() => handleDelete( item._id )
+            </div>
+          )}
 
-}
+        </div>
 
-className="px-3 py-1.5
-
-text-xs font-medium text-rose-400
-
-hover:bg-rose-500/10 border border-rose-500/20
-
-hover:border-rose-500/30 rounded-lg
-
-transition-all flex-shrink-0"
-
->
-
-Unfeature
-
-</button>
-
-</div>
-
-);
-
-}
-
-)}
-
-</div>
-
-)}
-
-</div>
-
-</div>
-
-</div>
-
-);
-
-}
+      </div>
+    </div>
+  );
+          }
