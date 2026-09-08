@@ -1,18 +1,19 @@
-import { MetadataRoute } from "next";
+import type { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
-      userAgent: "*",
-      allow: "/",
+      userAgent: '*',
+      allow: '/',
       disallow: [
-        "/api/",
-        "/login",
-        "/signup",
-        "/register",
-        "/settings",
+        '/api/',
+        '/login',
+        '/signup',
+        '/register',
+        '/settings',
       ],
     },
-    sitemap: "https://www.collegenz.in/sitemap.xml",
+
+    sitemap: 'https://www.collegenz.in/sitemap.xml',
   };
 }
