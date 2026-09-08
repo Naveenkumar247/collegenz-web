@@ -38,12 +38,13 @@ export const metadata: Metadata = {
   publisher: 'CollegenZ',
 
   alternates: {
-    canonical: 'https://www.collegenz.in',
+    canonical: 'https://www.collegenz.in/',
   },
 
   robots: {
     index: true,
     follow: true,
+
     googleBot: {
       index: true,
       follow: true,
@@ -56,40 +57,18 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_IN',
-    url: 'https://www.collegenz.in',
+    url: 'https://www.collegenz.in/',
     siteName: 'CollegenZ',
     title: 'CollegenZ – AI-Powered Student Platform',
     description:
       'Connect with students, discover opportunities, explore careers, build skills, and grow together with CollegenZ.',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'CollegenZ – AI-Powered Student Platform',
-      },
-    ],
   },
 
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: 'CollegenZ – AI-Powered Student Platform',
     description:
       'Connect, learn, discover opportunities and grow with CollegenZ.',
-    images: ['/og-image.png'],
-  },
-
-  icons: {
-    icon: [
-      {
-        url: '/favicon.ico',
-      },
-      {
-        url: '/icon.png',
-        type: 'image/png',
-      },
-    ],
-    apple: '/apple-icon.png',
   },
 
   category: 'education',
@@ -97,9 +76,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
       <head>
