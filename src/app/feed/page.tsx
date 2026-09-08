@@ -16,19 +16,9 @@ const API_BASE_URL = (
 
 interface FeaturedPost {
   _id: string;
-
-  postId?:
-    | string
-    | {
-        _id?: string;
-        data?: any;
-        imageUrl?: any;
-        username?: string;
-        postType?: string;
-      };
-
-  images?: string[];
+  title: string;
   description?: string;
+  images?: string[];
   priority?: number;
   expiresAt?: string;
   createdAt?: string;
@@ -56,15 +46,21 @@ export default function FeedPage() {
     useRef(false);
 
   /*
-   * Client mounted
+   * ============================================================
+   * CLIENT MOUNT
+   * ============================================================
    */
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   /*
-   * Restore token from localStorage
+   * ============================================================
+   * RESTORE TOKEN
+   * ============================================================
    */
+
   useEffect(() => {
     if (!isMounted) return;
 
@@ -88,8 +84,11 @@ export default function FeedPage() {
   ]);
 
   /*
-   * Load Featured Posts + Feed Posts
+   * ============================================================
+   * LOAD FEATURED POSTS + NORMAL FEED
+   * ============================================================
    */
+
   useEffect(() => {
     if (!isMounted) return;
 
@@ -105,6 +104,7 @@ export default function FeedPage() {
         /*
          * Get token
          */
+
         const backupToken =
           typeof window !== 'undefined'
             ? localStorage.getItem('token')
@@ -119,6 +119,7 @@ export default function FeedPage() {
         /*
          * Common headers
          */
+
         const authHeaders: Record<
           string,
           string
@@ -132,20 +133,23 @@ export default function FeedPage() {
         }
 
         /*
-         * ==========================================
+         * ======================================================
          * FEATURED POSTS
-         * ==========================================
+         * ======================================================
          */
 
         const featuredEndpoint =
           `${API_BASE_URL}/featuredposts`;
 
         const featuredRes =
-          await fetch(featuredEndpoint, {
-            method: 'GET',
-            headers: authHeaders,
-            cache: 'no-store',
-          });
+          await fetch(
+            featuredEndpoint,
+            {
+              method: 'GET',
+              headers: authHeaders,
+              cache: 'no-store',
+            },
+          );
 
         const featuredData =
           await featuredRes
@@ -156,14 +160,17 @@ export default function FeedPage() {
           'FEATURED POSTS API:',
           {
             url: featuredEndpoint,
-            status: featuredRes.status,
+            status:
+              featuredRes.status,
             data: featuredData,
-          }
+          },
         );
 
         if (featuredRes.ok) {
           const list =
-            Array.isArray(featuredData)
+            Array.isArray(
+              featuredData,
+            )
               ? featuredData
               : featuredData?.featuredposts ||
                 featuredData?.data ||
@@ -174,33 +181,36 @@ export default function FeedPage() {
           setFeaturedposts(
             Array.isArray(list)
               ? list
-              : []
+              : [],
           );
         } else {
           console.error(
             'Featured posts request failed:',
             featuredRes.status,
-            featuredData
+            featuredData,
           );
 
           setFeaturedposts([]);
         }
 
         /*
-         * ==========================================
+         * ======================================================
          * NORMAL FEED
-         * ==========================================
+         * ======================================================
          */
 
         const feedEndpoint =
           `${API_BASE_URL}/posts/feed`;
 
         const feedRes =
-          await fetch(feedEndpoint, {
-            method: 'GET',
-            headers: authHeaders,
-            cache: 'no-store',
-          });
+          await fetch(
+            feedEndpoint,
+            {
+              method: 'GET',
+              headers: authHeaders,
+              cache: 'no-store',
+            },
+          );
 
         const feedData =
           await feedRes
@@ -211,14 +221,17 @@ export default function FeedPage() {
           'FEED API:',
           {
             url: feedEndpoint,
-            status: feedRes.status,
+            status:
+              feedRes.status,
             data: feedData,
-          }
+          },
         );
 
         if (feedRes.ok) {
           const feedList =
-            Array.isArray(feedData)
+            Array.isArray(
+              feedData,
+            )
               ? feedData
               : feedData?.posts ||
                 feedData?.data ||
@@ -227,13 +240,13 @@ export default function FeedPage() {
           setPosts(
             Array.isArray(feedList)
               ? feedList
-              : []
+              : [],
           );
         } else {
           console.error(
             'Feed request failed:',
             feedRes.status,
-            feedData
+            feedData,
           );
 
           setPosts([]);
@@ -241,7 +254,7 @@ export default function FeedPage() {
       } catch (err) {
         console.error(
           'Data pool connection failed:',
-          err
+          err,
         );
 
         setFeaturedposts([]);
@@ -256,31 +269,37 @@ export default function FeedPage() {
   }, [isMounted]);
 
   /*
-   * Refresh a post after like/save/etc.
+   * ============================================================
+   * NORMAL POST STATE REFRESH
+   * ============================================================
    */
+
   const handlePostStateRefresh = (
-    updatedPost: any
+    updatedPost: any,
   ) => {
     setPosts((prevPosts) =>
       prevPosts.map((p) =>
         p._id === updatedPost._id
           ? updatedPost
-          : p
-      )
+          : p,
+      ),
     );
   };
 
   /*
-   * Navigation
+   * ============================================================
+   * NAVIGATION
+   * ============================================================
    */
+
   const handlePersonalizedRoute = (
-    targetPath: string
+    targetPath: string,
   ) => {
     if (!isAuthenticated) {
       router.push(
         `/login?redirectTo=${encodeURIComponent(
-          targetPath
-        )}`
+          targetPath,
+        )}`,
       );
     } else {
       router.push(targetPath);
@@ -288,120 +307,11 @@ export default function FeedPage() {
   };
 
   /*
-   * Extract featured post information
+   * ============================================================
+   * PREVENT HYDRATION MISMATCH
+   * ============================================================
    */
-  const getFeaturedPostInfo = (
-    feat: FeaturedPost
-  ) => {
-    const post =
-      feat.postId &&
-      typeof feat.postId === 'object'
-        ? feat.postId
-        : null;
 
-    /*
-     * Post ID
-     */
-    const targetPostId =
-      post?._id ||
-      (typeof feat.postId === 'string'
-        ? feat.postId
-        : null) ||
-      feat._id;
-
-    /*
-     * Image
-     *
-     * Priority:
-     * 1. FeaturedPost uploaded image
-     * 2. Post imageUrl
-     * 3. fallback
-     */
-    let imageUrl =
-      feat.images?.[0] || '';
-
-    if (!imageUrl && post?.imageUrl) {
-      if (
-        Array.isArray(post.imageUrl)
-      ) {
-        imageUrl =
-          post.imageUrl[0] || '';
-      } else if (
-        typeof post.imageUrl === 'string'
-      ) {
-        imageUrl =
-          post.imageUrl;
-      }
-    }
-
-    if (!imageUrl) {
-      imageUrl =
-        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe';
-    }
-
-    /*
-     * Username
-     */
-    const authorName =
-      post?.username ||
-      'User';
-
-    /*
-     * Content
-     */
-    let postContent = '';
-
-    /*
-     * Featured description gets highest priority
-     */
-    if (
-      feat.description &&
-      feat.description.trim()
-    ) {
-      postContent =
-        feat.description;
-    }
-
-    /*
-     * Otherwise use Post.data
-     */
-    if (
-      !postContent &&
-      post?.data
-    ) {
-      if (
-        typeof post.data === 'string'
-      ) {
-        postContent =
-          post.data;
-      } else if (
-        typeof post.data === 'object'
-      ) {
-        postContent =
-          post.data.content ||
-          post.data.caption ||
-          post.data.title ||
-          post.data.description ||
-          '';
-      }
-    }
-
-    if (!postContent) {
-      postContent =
-        'Featured Post';
-    }
-
-    return {
-      targetPostId,
-      imageUrl,
-      authorName,
-      postContent,
-    };
-  };
-
-  /*
-   * Prevent hydration mismatch
-   */
   if (!isMounted) {
     return (
       <div className="p-6 text-slate-500 text-xs font-mono">
@@ -417,16 +327,16 @@ export default function FeedPage() {
 
         <main className="col-span-1 lg:col-span-5 space-y-4">
 
-          {/* ========================================
+          {/* ====================================================
               FEATURED POSTS
-          ======================================== */}
+          ==================================================== */}
 
           <div className="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
 
             <div className="flex items-center justify-between">
 
               <h2 className="text-xs sm:text-sm font-bold text-slate-800 tracking-wide">
-                Featured Post
+                Featured Posts
               </h2>
 
               {featuredposts.length > 0 && (
@@ -450,7 +360,7 @@ export default function FeedPage() {
                       }
                       className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl bg-slate-100 border border-slate-200/60 animate-pulse"
                     />
-                  )
+                  ),
                 )
 
               ) : featuredposts.length > 0 ? (
@@ -462,59 +372,61 @@ export default function FeedPage() {
                       return null;
                     }
 
-                    const {
-                      targetPostId,
-                      imageUrl,
-                      authorName,
-                      postContent,
-                    } =
-                      getFeaturedPostInfo(
-                        feat
-                      );
+                    const imageUrl =
+                      feat.images?.[0] ||
+                      '';
 
                     return (
                       <div
                         key={
                           feat._id
                         }
-                        onClick={() =>
-                          handlePersonalizedRoute(
-                            `/posts/${targetPostId}`
-                          )
-                        }
-                        className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm cursor-pointer transition-transform hover:scale-[1.02]"
+                        className="flex-shrink-0 w-28 h-44 sm:w-[110px] sm:h-[170px] rounded-xl relative overflow-hidden snap-start group border border-slate-200/60 bg-cover bg-center shadow-sm transition-transform hover:scale-[1.02]"
                         style={{
                           backgroundImage:
-                            `url("${imageUrl}")`,
+                            imageUrl
+                              ? `url("${imageUrl}")`
+                              : undefined,
                         }}
                       >
+
+                        {/* No image background */}
+                        {!imageUrl && (
+                          <div className="absolute inset-0 bg-slate-200 flex items-center justify-center">
+                            <span className="text-[9px] text-slate-400">
+                              No Image
+                            </span>
+                          </div>
+                        )}
 
                         {/* Gradient */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                        {/* User */}
-                        <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/20 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10 max-w-[90%]">
-
-                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20" />
-
-                          <span className="text-[8px] text-white font-medium truncate">
-                            {authorName}
+                        {/* Featured Badge */}
+                        <div className="absolute top-2 left-2 bg-black/30 backdrop-blur-sm py-0.5 px-1.5 rounded-full border border-white/10">
+                          <span className="text-[8px] text-white font-semibold">
+                            FEATURED
                           </span>
-
                         </div>
 
                         {/* Content */}
                         <div className="absolute bottom-2 inset-x-2">
 
-                          <p className="text-[9px] sm:text-[10px] text-white font-semibold line-clamp-2 leading-snug">
-                            {postContent}
+                          <p className="text-[10px] sm:text-[11px] text-white font-bold line-clamp-2 leading-snug">
+                            {feat.title}
                           </p>
+
+                          {feat.description && (
+                            <p className="text-[8px] sm:text-[9px] text-white/80 line-clamp-2 leading-snug mt-1">
+                              {feat.description}
+                            </p>
+                          )}
 
                         </div>
 
                       </div>
                     );
-                  }
+                  },
                 )
 
               ) : (
@@ -537,9 +449,9 @@ export default function FeedPage() {
 
           </div>
 
-          {/* ========================================
+          {/* ====================================================
               NORMAL FEED
-          ======================================== */}
+          ==================================================== */}
 
           <div className="space-y-4">
 
@@ -573,7 +485,7 @@ export default function FeedPage() {
                       <div className="w-full h-56 bg-slate-200 rounded-xl" />
 
                     </div>
-                  )
+                  ),
                 )}
 
               </div>
@@ -603,7 +515,7 @@ export default function FeedPage() {
                       }
                     />
                   );
-                }
+                },
               )
 
             )}
@@ -612,16 +524,16 @@ export default function FeedPage() {
 
         </main>
 
-        {/* ========================================
+        {/* ====================================================
             RIGHT SIDEBAR
-        ======================================== */}
+        ==================================================== */}
 
         <aside className="hidden lg:block lg:col-span-3 sticky top-4 h-fit">
 
           <div
             onClick={() =>
               handlePersonalizedRoute(
-                '/personalized-hub'
+                '/personalized-hub',
               )
             }
             className="bg-[#eefbf4] border border-emerald-100 p-5 rounded-2xl text-center space-y-3 shadow-sm cursor-pointer hover:border-emerald-200 transition-all"
@@ -657,4 +569,4 @@ export default function FeedPage() {
 
     </div>
   );
-        }
+}
