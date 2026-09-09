@@ -38,7 +38,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
         <Link href="/" className={pathname === '/' ? 'text-[#228B22]' : 'text-[#64748b]'}>
           <i className="bi bi-house-door text-2xl"></i>
         </Link>
-        <Link href="/internships" className={pathname === '/internships' ? 'text-[#228B22]' : 'text-[#64748b]'}>
+        <Link href="/internship" className={pathname === '/internships' ? 'text-[#228B22]' : 'text-[#64748b]'}>
           <i className="bi bi-briefcase text-2xl"></i>
         </Link>
         <div className="relative -top-5">
